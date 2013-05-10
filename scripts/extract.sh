@@ -73,4 +73,5 @@ done
 while [ 1 ]
 do
     fg &> /dev/null; [ $? == 1 ] && break; 
+    sleep 5
 done
