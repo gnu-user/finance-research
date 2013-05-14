@@ -33,35 +33,22 @@ import math
 import logging
 from collections import OrderedDict
 
-def order_trades(dir):
-    """Analyzes each of the dates in the trades csv files and returns an ordered
-    list of the files to execute from earliest to latest date and the corresponding dates 
-    that are covered in each file.
+def trade_dates(file):
+    """Analyzes a trades csv file and returns a list of the corresponding dates
+    that are covered in the file.
     """
-    files = {}
-    ordered_files = OrderedDict({})
+    dates = []
 
-    for file in glob.glob(dir + "*.csv"):
-        with open(file, 'rb') as csvfile:
-            files[file] = None
-            reader = csv.DictReader(csvfile)
+    # Open the trades file and get each date
+    with open(file, 'rb') as csvfile:
+        reader = csv.DictReader(csvfile)
 
-            #print file
-            for line in reader:
-                date = int(float(line['date']))
-                if not files[file]:
-                    #print file, line['date']
-                    files[file] = date
+        for line in reader:
+            date = int(float(line['date']))
+            if not date in dates:
+                dates.append(date)
 
-    # Sort the files store them in an ordered dictionary
-    for file in sorted(files, key=files.get):
-        ordered_files[file] = files[file]
-
-    #print "RESULTS"
-    #or file in ordered_files:
-    #    print file, ordered_files[file]
-
-    return ordered_files
+    return dates
 
 
 def order_quotes(dir):
@@ -222,8 +209,8 @@ def float_to_int(value):
     """Converts a string representation of a float value to an int 
     FLOORING the value (e.g. 2.99 becomes 2)
     """
-
     return int(float(value))
+
 
 def market_hours(time):
     """Determines if the time provide is within the market operating hours, 
@@ -241,25 +228,27 @@ def market_hours(time):
 
 
 
-trades_dir = ''
+# The trades file, quotes directory, and resultant taq file
+trades_file = ''
 quotes_dir = ''
 taq_file = ''
+
 
 # Process command line arguments
 if len(sys.argv) < 4:
     sys.stderr.write("Invalid arguments given\n")
-    sys.stderr.write("Usage: align_quotes.py {trades directory} {quotes directory} {output file}\n")
-    sys.stderr.write("Example: " + sys.argv[0] + "trades_2012/ quotes_2012/ taq_2012.csv\n")
+    sys.stderr.write("Usage: align_quotes.py {trades file} {quotes directory} {output file}\n")
+    sys.stderr.write("Example: " + sys.argv[0] + "trades_08oct2012.csv quotes_2012/ taq_2012.csv\n")
     sys.exit(1)
 
-if os.path.isdir(sys.argv[1]) and os.path.isdir(sys.argv[2]):
+if os.path.isfile(sys.argv[1]) and os.path.isdir(sys.argv[2]):
     # Error if trying to overwrite an existing output file
     if os.path.isfile(sys.argv[3]):
         sys.stderr.write("The output file already exists, please specify a different output file!")
         sys.exit(1)
-    trades_dir, quotes_dir, taq_file = sys.argv[1:4]
+    trades_file, quotes_dir, taq_file = sys.argv[1:4]
 else:
-     sys.stderr.write("Trades or quotes directory does not exist, check arguments and try again!")
+     sys.stderr.write("Trades file or quotes directory does not exist, check arguments and try again!")
      sys.exit(1)
 
 # Configure the logging
@@ -267,7 +256,7 @@ logging.basicConfig(filename='errors.log',level=logging.DEBUG)
 
 
 # Parse each trade/quotes file and determine the order in which to process the files
-trades = order_trades(trades_dir)
+trade_dates = trade_dates(trades_file)
 quotes = order_quotes(quotes_dir)
 
 quotes_file = None
@@ -278,11 +267,10 @@ quote = None
 taq_output = list()
 
 # For each trades file iterate through the quotes files and produce a combined file
-for file in trades:
+for date in trade_dates:
     # Find the next quotes file which includes the date needed for the trades file
     for key in quotes:
-        print trades[file], quotes[key]
-        if trades[file] in quotes[key]:
+        if date in quotes[key]:
             # Open the quotes file and read the first entry
             quotes_file = key
             quotes_csv = open(quotes_file, 'rb')
@@ -291,12 +279,12 @@ for file in trades:
             break
 
     # If the trades file date was not found in the quotes file, error, skip file
-    if not quotes_file or not trades[file] in quotes[quotes_file]:
-        logging.warning(file + " : No quotes entry found for the trades file date, skipping file!")
+    if not quotes_file or not date in quotes[quotes_file]:
+        logging.warning(trades_file + " : No quotes entry found for the trades file date, skipping file!")
         continue
 
     # Open the trades file and find each corresponding entry in the quotes file
-    trades_csv = open(file, 'rb')
+    trades_csv = open(trades_file, 'rb')
     trades_reader = csv.DictReader(trades_csv)
 
     # Used to simplify processing duplicate trades file entries
@@ -357,7 +345,7 @@ for file in trades:
 
                 # Error if NO matching entries in the quotes file has been found
                 elif not exchanges and symbol == quote['SYMBOL'] and (trade_date < quote_date or trade_time < quote_time):
-                    logging.warning(file + " : No quotes entry found for the following trade: " + trade['symbol'] 
+                    logging.warning(trades_file + " : No quotes entry found for the following trade: " + trade['symbol'] 
                         + ", " + trade_time.isoformat())
                     break
                 # Break when the last matching quote entry for the time has been parsed
@@ -370,7 +358,7 @@ for file in trades:
             # Error should not have reached the end of quotes file before trades file
             # TODO add support for the case where a single trades file spans across more than one quotes file
             except StopIteration:
-                logging.warning(quotes_file + " : Ended before trades file :" + file
+                logging.warning(quotes_file + " : Ended before trades file :" + trades_file
                     + " at following trade: " + trade['symbol'] + ", " + trade_time.isoformat())
                 break
 
