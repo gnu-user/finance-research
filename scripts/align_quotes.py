@@ -3,7 +3,7 @@
 #
 # A helpful script for aligning quotes entries with the corresponding trades
 # entries and producing a resultant CSV containing the trades with the 
-# NBBx calculations, as well as the NASDAQ information.
+# NBBO calculations, as well as the NASDAQ information.
 # 
 # Copyright (C) 2013, Jonathan Gillett
 # All rights reserved.
@@ -98,6 +98,25 @@ def order_quotes(dir):
     return ordered_files
 
 
+def write_taq(taq_output, file):
+    """Writes the data in the the TAQ buffer to file, appending the TAQ buffer data
+    to any existing entries.
+    """
+
+    # Write the headers of the file if the file does not exist
+    if not os.path.isfile(file):
+        with open(file, 'wb') as csvfile:
+            writer = csv.DictWriter(csvfile, delimiter=',', fieldnames=taq_output[0].keys())
+            writer.writeheader()
+            #writer.writerow(taq_output[0].keys())
+
+
+    with open(file, 'ab') as csvfile:
+        writer = csv.DictWriter(csvfile, delimiter=',', fieldnames=taq_output[0].keys())
+        #for entry in taq_output:
+        writer.writerows(taq_output)
+
+
 def calculate_NBBO(exchanges):
     """Calculates the national best bid and best offer and returns the 
     corresponding bid size and offer size for each.
@@ -119,12 +138,17 @@ def calculate_NBBO(exchanges):
 
     # Get the best bid and offer
     for exchange in exchanges:
+        #print exchanges[exchange]
         if exchanges[exchange]['BID'] >=  NBBO['BID']:
             NBBO['BID'] = exchanges[exchange]['BID']
             NBBO['BIDSIZ'] = exchanges[exchange]['BIDSIZ']
         if exchanges[exchange]['OFR'] <= NBBO['OFR']:
             NBBO['OFR'] = exchanges[exchange]['OFR']
             NBBO['OFRSIZ'] = exchanges[exchange]['OFRSIZ']
+
+    # If there is no best offer, set OFR to zero
+    if NBBO['OFR'] == sys.maxint:
+        NBBO['OFR'] = 0;
 
     return NBBO
 
@@ -223,9 +247,9 @@ def market_hours(time):
 
 
 
-trades_dir = ""
-quotes_dir = ""
-results_file = ""
+trades_dir = ''
+quotes_dir = ''
+taq_file = ''
 
 # Process command line arguments
 if len(sys.argv) < 4:
@@ -235,7 +259,7 @@ if len(sys.argv) < 4:
     sys.exit()
 
 if os.path.isdir(sys.argv[1]) and os.path.isdir(sys.argv[2]):
-    trades_dir, quotes_dir, results_file = sys.argv[1:4]
+    trades_dir, quotes_dir, taq_file = sys.argv[1:4]
 else:
      sys.stderr.write("Trades or quotes directory does not exist, check arguments and try again!")
 
@@ -297,8 +321,8 @@ for file in trades:
 
         # If the current date and time is the same, use the previous results
         if prev_trade_date == trade_date and prev_trade_time == trade_time:
-            # TODO add handling
-            # use the data for the current trade entry, duplicate the previous NBBx calculations 
+            # Use the data for the current trade, duplicate the previous NBBO calculations
+            add_taq_entry(taq_output, trade, NBBO, exchanges)
             continue
         else:
             prev_trade_date = trade_date
@@ -329,10 +353,10 @@ for file in trades:
                     # Store bid, ofr, bidsiz, ofrsiz for the exchange, for multiple entries for the same
                     # exchange the LAST value added is used
                     exchanges[quote['EX']] = {}
-                    exchanges[quote['EX']]['BID'] = quote['BID']
-                    exchanges[quote['EX']]['OFR'] = quote['OFR']
-                    exchanges[quote['EX']]['BIDSIZ'] = quote['BIDSIZ']
-                    exchanges[quote['EX']]['OFRSIZ'] = quote['OFRSIZ']
+                    exchanges[quote['EX']]['BID'] = float(quote['BID'])
+                    exchanges[quote['EX']]['OFR'] = float(quote['OFR'])
+                    exchanges[quote['EX']]['BIDSIZ'] = float(quote['BIDSIZ'])
+                    exchanges[quote['EX']]['OFRSIZ'] = float(quote['OFRSIZ'])
                 # Error if NO matching entries in the quotes file has been found
                 # TODO add support to take the data from the previous time entry (within delta seconds),
                 # if there is no data for the current time
@@ -361,9 +385,12 @@ for file in trades:
         NBBO = calculate_NBBO(exchanges)
         add_taq_entry(taq_output, trade, NBBO, exchanges)
 
-    #with open(file, 'rb') as csvfile:
-    #    reader = csv.DictReader(csvfile)
-    #    for line in reader:
-    #        date = int(float(line['time']))
-    #        print  line['SYMBOL'], date, convert_sec(date).isoformat(), line['BID'], line['OFR'], line['BIDSIZ'], line['OFRSIZ'], line['EX']
+        # If the TAQ buffer is > 100K lines, flush the buffer to disk
+        if taq_output.__len__() >= 100000:
+            write_taq(taq_output, taq_file)
+            taq_output = {}
+
+# Write any remaining content in the TAQ buffer to disk
+if taq_output:
+    write_taq(taq_output, taq_file)
 
