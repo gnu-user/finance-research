@@ -129,12 +129,10 @@ def calculate_NBBO(NBBO, exchanges):
     # Get the best bid and offer
     for exchange in exchanges:
         # Ignore any bids or offers less than 1 USD (error in quotes file)
-        if exchanges[exchange]['BID'] < 1.0 or exchanges[exchange]['OFR'] < 1.0:
-            continue
-        if exchanges[exchange]['BID'] >=  NBBO['BID']:
+        if exchanges[exchange]['BID'] >= NBBO['BID'] and exchanges[exchange]['BID'] >= 1.0:
             NBBO['BID'] = exchanges[exchange]['BID']
             NBBO['BIDSIZ'] = exchanges[exchange]['BIDSIZ']
-        if exchanges[exchange]['OFR'] <= NBBO['OFR']:
+        if exchanges[exchange]['OFR'] <= NBBO['OFR'] and exchanges[exchange]['OFR'] >= 1.0:
             NBBO['OFR'] = exchanges[exchange]['OFR']
             NBBO['OFRSIZ'] = exchanges[exchange]['OFRSIZ']
 
