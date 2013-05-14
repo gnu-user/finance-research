@@ -169,22 +169,22 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
     taq_entry['date']    = trade['date']
 
     # Add all NBBO columns
-    taq_entry['BESTBID'] = NBBO['BID']
-    taq_entry['BESTOFR'] = NBBO['OFR']
-    taq_entry['BESTBIDSIZ'] = NBBO['BIDSIZ']
-    taq_entry['BESTOFRSIZ'] = NBBO['OFRSIZ']
+    taq_entry['NBB'] = NBBO['BID']
+    taq_entry['NBO'] = NBBO['OFR']
+    taq_entry['NBBSIZ'] = NBBO['BIDSIZ']
+    taq_entry['NBOSIZ'] = NBBO['OFRSIZ']
 
     # Add the NASDAQ NBBO entries if they exist
     if exchanges.has_key('T'):
-        taq_entry['NSDQBESTBID'] = exchanges['T']['BID']
-        taq_entry['NSDQBESTOFR'] = exchanges['T']['OFR']
-        taq_entry['NSDQBESTBIDSIZ'] = exchanges['T']['BIDSIZ']
-        taq_entry['NSDQBESTOFRSIZ'] = exchanges['T']['OFRSIZ']
+        taq_entry['NQBB'] = exchanges['T']['BID']
+        taq_entry['NQBO'] = exchanges['T']['OFR']
+        taq_entry['NQBBSIZ'] = exchanges['T']['BIDSIZ']
+        taq_entry['NQBOSIZ'] = exchanges['T']['OFRSIZ']
     else:
-        taq_entry['NSDQBESTBID'] = 0
-        taq_entry['NSDQBESTOFR'] = 0
-        taq_entry['NSDQBESTBIDSIZ'] = 0
-        taq_entry['NSDQBESTOFRSIZ'] = 0
+        taq_entry['NQBB'] = 0
+        taq_entry['NQBO'] = 0
+        taq_entry['NQBBSIZ'] = 0
+        taq_entry['NQBOSIZ'] = 0
 
     # Append the TAQ entry to the TAQ output buffer
     taq_output.append(taq_entry)
@@ -280,16 +280,15 @@ taq_output = list()
 # For each trades file iterate through the quotes files and produce a combined file
 for file in trades:
     # Find the next quotes file which includes the date needed for the trades file
-    if not quotes_file or not trades[file] in quotes[quotes_file]:
-        # Check if the date exists in each quotes file
-        for key in quotes:
-            print trades[file], quotes[key]
-            if trades[file] in quotes[key]:
-                # Open the quotes file and read the first entry
-                quotes_file = key
-                quotes_csv = open(quotes_file, 'rb')
-                quotes_reader = csv.DictReader(quotes_csv)
-                quote = quotes_reader.next()
+    for key in quotes:
+        print trades[file], quotes[key]
+        if trades[file] in quotes[key]:
+            # Open the quotes file and read the first entry
+            quotes_file = key
+            quotes_csv = open(quotes_file, 'rb')
+            quotes_reader = csv.DictReader(quotes_csv)
+            quote = quotes_reader.next()
+            break
 
     # If the trades file date was not found in the quotes file, error, skip file
     if not quotes_file or not trades[file] in quotes[quotes_file]:
@@ -329,7 +328,7 @@ for file in trades:
             prev_trade_time = trade_time
 
         # Iterate through the quotes file to the matching symbol entry and date
-        if symbol != quote['SYMBOL']:
+        if symbol != quote['SYMBOL'] or trade_date != float_to_int(quote['date']):
             while quotes_reader.line_num < quotes[quotes_file][trade_date][symbol]:
                 quotes_reader.next()
 
@@ -346,7 +345,7 @@ for file in trades:
                     continue
 
                 # Get the current NBBO for each exchange in the quotes file using the most recent entry
-                if trade['symbol'] == quote['SYMBOL'] and trade_date == quote_date and trade_time >= quote_time:
+                if symbol == quote['SYMBOL'] and trade_date == quote_date and trade_time >= quote_time:
                     # Parse the latest NBBO bid, ofr, bidsiz, ofrsiz for each exchange
                     if not quote['EX'] in exchanges:
                         exchanges[quote['EX']] = {}
@@ -357,12 +356,12 @@ for file in trades:
                     exchanges[quote['EX']]['OFRSIZ'] = float(quote['OFRSIZ'])
 
                 # Error if NO matching entries in the quotes file has been found
-                elif not exchanges and trade['symbol'] == quote['SYMBOL'] and (trade_date < quote_date or trade_time < quote_time):
+                elif not exchanges and symbol == quote['SYMBOL'] and (trade_date < quote_date or trade_time < quote_time):
                     logging.warning(file + " : No quotes entry found for the following trade: " + trade['symbol'] 
                         + ", " + trade_time.isoformat())
                     break
                 # Break when the last matching quote entry for the time has been parsed
-                elif exchanges and (trade['symbol'] != quote['SYMBOL'] or trade_date < quote_date or trade_time < quote_time): 
+                elif exchanges and (symbol != quote['SYMBOL'] or trade_date < quote_date or trade_time < quote_time): 
                     break
 
                 # Read the next line of the quotes file
@@ -386,6 +385,11 @@ for file in trades:
         if taq_output.__len__() >= 100000:
             write_taq(taq_output, taq_file)
             taq_output = {}
+
+    # Close open files
+    trades_csv.close()
+    quotes_csv.close()
+
 
 # Write any remaining content in the TAQ buffer to disk
 if taq_output:
