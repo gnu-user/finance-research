@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env pypy
 ###############################################################################
 #
 # A helpful script for aligning quotes entries with the corresponding trades
@@ -71,7 +71,7 @@ def order_quotes(dir):
                     files[file][date] = {line['SYMBOL'] : reader.line_num}
                 elif not line['SYMBOL'] in files[file][date]:
                     files[file][date][line['SYMBOL']] = reader.line_num
-                    
+
     return files
 
 
