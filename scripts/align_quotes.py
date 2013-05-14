@@ -113,7 +113,7 @@ def write_taq(taq_output, file):
         writer.writerows(taq_output)
 
 
-def calculate_NBBO(NBBO, exchanges):
+def calculate_NBBO(exchanges):
     """Calculates the national best bid and best offer of all exchanges
     and uses the corresponding bid size and offer size for each.
 
@@ -126,6 +126,9 @@ def calculate_NBBO(NBBO, exchanges):
                           'OFRSIZ'  => 5}
 			   ... }
     """
+    # The current NBBO out of all exchanges
+    NBBO = {'BID': 0, 'OFR': sys.maxint, 'BIDSIZ': 0, 'OFRSIZ': 0}
+
     # Get the best bid and offer
     for exchange in exchanges:
         # Ignore any bids or offers less than 1 USD (error in quotes file)
@@ -135,6 +138,12 @@ def calculate_NBBO(NBBO, exchanges):
         if exchanges[exchange]['OFR'] <= NBBO['OFR'] and exchanges[exchange]['OFR'] >= 1.0:
             NBBO['OFR'] = exchanges[exchange]['OFR']
             NBBO['OFRSIZ'] = exchanges[exchange]['OFRSIZ']
+
+    # If there is no valid OFR for the current NBBO set it to 0
+    if NBBO['OFR'] == sys.maxint:
+        NBBO['OFR'] = 0
+
+    return NBBO
 
 
 def add_taq_entry(taq_output, trade, NBBO, exchanges):
@@ -298,9 +307,7 @@ for file in trades:
 
     # The list of exchanges, each exchange has its own NBBO
     exchanges = {}
-
-    # The global NBBO out of all exchanges for the current trading day
-    NBBO = {'BID': 0, 'OFR': sys.maxint, 'BIDSIZ': 0, 'OFRSIZ': 0}
+    NBBO = {}
 
     # Find a matching quotes entry for each line in trades file
     for trade in trades_reader:
@@ -371,8 +378,8 @@ for file in trades:
         # Print the results in exchanges
         #print trade_date, trade_time, exchanges
 
-        # Calculate the current global NBBO, add the results as a new entry in the taq output buffer
-        calculate_NBBO(NBBO, exchanges)
+        # Calculate the current NBBO out of all exchanges, add the results as a new entry in the taq output buffer
+        NBBO = calculate_NBBO(exchanges)
         add_taq_entry(taq_output, trade, NBBO, exchanges)
 
         # If the TAQ buffer is > 100K lines, flush the buffer to disk
