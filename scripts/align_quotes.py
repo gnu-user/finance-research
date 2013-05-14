@@ -57,7 +57,6 @@ def order_quotes(dir):
     dates and the stock tickers, with their line counts, that are covered in each file.
     """
     files = OrderedDict({})
-    ordered_files = OrderedDict({})
 
     for file in glob.glob(dir + "*.csv"):
         with open(file, 'rb') as csvfile:
@@ -72,17 +71,8 @@ def order_quotes(dir):
                     files[file][date] = {line['SYMBOL'] : reader.line_num}
                 elif not line['SYMBOL'] in files[file][date]:
                     files[file][date][line['SYMBOL']] = reader.line_num
-
-    # Sort the files store them in an ordered dictionary
-    for file in sorted(files, key=files[file].get):
-        ordered_files[file] = files[file]
-
-    
-    #print "RESULTS"
-    #for file in ordered_files:
-    #    print file, ordered_files[file]
-
-    return ordered_files
+                    
+    return files
 
 
 def write_taq(taq_output, file):
