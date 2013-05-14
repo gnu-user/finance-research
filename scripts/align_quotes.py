@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 ###############################################################################
 #
 # A helpful script for aligning quotes entries with the corresponding trades
