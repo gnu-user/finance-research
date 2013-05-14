@@ -67,7 +67,7 @@ do
     done
     
     # Fork the conversion process
-    sas7bdat_to_csv $file &> ${file}.log &
+    pypy_sas7bdat_to_csv $file &> ${file}.log &
 done
 
 # Wait for all parallel jobs to finish
