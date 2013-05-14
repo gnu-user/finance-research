@@ -102,24 +102,20 @@ def write_taq(taq_output, file):
     """Writes the data in the the TAQ buffer to file, appending the TAQ buffer data
     to any existing entries.
     """
-
     # Write the headers of the file if the file does not exist
     if not os.path.isfile(file):
         with open(file, 'wb') as csvfile:
             writer = csv.DictWriter(csvfile, delimiter=',', fieldnames=taq_output[0].keys())
             writer.writeheader()
-            #writer.writerow(taq_output[0].keys())
-
 
     with open(file, 'ab') as csvfile:
         writer = csv.DictWriter(csvfile, delimiter=',', fieldnames=taq_output[0].keys())
-        #for entry in taq_output:
         writer.writerows(taq_output)
 
 
-def calculate_NBBO(exchanges):
-    """Calculates the national best bid and best offer and returns the 
-    corresponding bid size and offer size for each.
+def calculate_NBBO(NBBO, exchanges):
+    """Calculates the national best bid and best offer of all exchanges
+    and uses the corresponding bid size and offer size for each.
 
     Accepts a dictionary containing the exchanges and the corresponding
     BID, OFR, BIDSIZ, and OFRSIZ, for each.
@@ -127,18 +123,11 @@ def calculate_NBBO(exchanges):
     example: { 'N'  =>  { 'BID'     => 50.0,
                           'OFR'     => 48.00,
                           'BIDSIZ'  => 10,
-                          'OFRSIZ'  => 5}}
- 
-                    exchanges[quote['EX']]['BID'] = quote['BID']
-                    exchanges[quote['EX']]['OFR'] = quote['OFR']
-                    exchanges[quote['EX']]['BIDSIZ'] = quote['BIDSIZ']
-                    exchanges[quote['EX']]['OFRSIZ'] = quote['OFRSIZ']
+                          'OFRSIZ'  => 5}
+			   ... }
     """
-    NBBO = {'BID': 0, 'OFR': sys.maxint, 'BIDSIZ': 0, 'OFRSIZ': 0}
-
     # Get the best bid and offer
     for exchange in exchanges:
-        #print exchanges[exchange]
         if exchanges[exchange]['BID'] >=  NBBO['BID']:
             NBBO['BID'] = exchanges[exchange]['BID']
             NBBO['BIDSIZ'] = exchanges[exchange]['BIDSIZ']
@@ -146,19 +135,14 @@ def calculate_NBBO(exchanges):
             NBBO['OFR'] = exchanges[exchange]['OFR']
             NBBO['OFRSIZ'] = exchanges[exchange]['OFRSIZ']
 
-    # If there is no best offer, set OFR to zero
-    if NBBO['OFR'] == sys.maxint:
-        NBBO['OFR'] = 0;
-
-    return NBBO
-
 
 def add_taq_entry(taq_output, trade, NBBO, exchanges):
     """Creates a new TAQ entry and appends it to the TAQ output,
     the format of the new entry added to the TAQ output buffer is
     as follows:
 
-    <All trade data columns> <BESTBID, BESTOFR, BESTBIDSIZ, BESTOFRSIZ> <NSDQBID, NSDQOFR, NSDQBIDSIZ, NSDQOFRSIZ>
+    <All trade data columns>, <BESTBID, BESTOFR, BESTBIDSIZ, BESTOFRSIZ>, 
+    <NSDQBESTBID, NSDQBESTOFR, NSDQBESTBIDSIZ, NSDQBESTOFRSIZ>
 
     If there is no available TAQ entry for NASDAQ then the columns in the TAQ output
     will contain 0 for each NSDQ entry.
@@ -180,17 +164,17 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
     taq_entry['BESTBIDSIZ'] = NBBO['BIDSIZ']
     taq_entry['BESTOFRSIZ'] = NBBO['OFRSIZ']
 
-    # Add all the NASDAQ entries if they exist
+    # Add the NASDAQ NBBO entries if they exist
     if exchanges.has_key('T'):
-        taq_entry['NSDQBID'] = exchanges['T']['BID']
-        taq_entry['NSDQOFR'] = exchanges['T']['OFR']
-        taq_entry['NSDQBIDSIZ'] = exchanges['T']['BIDSIZ']
-        taq_entry['NSDQOFRSIZ'] = exchanges['T']['OFRSIZ']
+        taq_entry['NSDQBESTBID'] = exchanges['T']['BID']
+        taq_entry['NSDQBESTOFR'] = exchanges['T']['OFR']
+        taq_entry['NSDQBESTBIDSIZ'] = exchanges['T']['BIDSIZ']
+        taq_entry['NSDQBESTOFRSIZ'] = exchanges['T']['OFRSIZ']
     else:
-        taq_entry['NSDQBID'] = 0
-        taq_entry['NSDQOFR'] = 0
-        taq_entry['NSDQBIDSIZ'] = 0
-        taq_entry['NSDQOFRSIZ'] = 0
+        taq_entry['NSDQBESTBID'] = 0
+        taq_entry['NSDQBESTOFR'] = 0
+        taq_entry['NSDQBESTBIDSIZ'] = 0
+        taq_entry['NSDQBESTOFRSIZ'] = 0
 
     # Append the TAQ entry to the TAQ output buffer
     taq_output.append(taq_entry)
@@ -256,13 +240,17 @@ if len(sys.argv) < 4:
     sys.stderr.write("Invalid arguments given\n")
     sys.stderr.write("Usage: align_quotes.py {trades directory} {quotes directory} {output file}\n")
     sys.stderr.write("Example: " + sys.argv[0] + "trades_2012/ quotes_2012/ taq_2012.csv\n")
-    sys.exit()
+    sys.exit(1)
 
 if os.path.isdir(sys.argv[1]) and os.path.isdir(sys.argv[2]):
+    # Error if trying to overwrite an existing output file
+    if os.path.isfile(sys.argv[3]):
+        sys.stderr.write("The output file already exists, please specify a different output file!")
+        sys.exit(1)
     trades_dir, quotes_dir, taq_file = sys.argv[1:4]
 else:
      sys.stderr.write("Trades or quotes directory does not exist, check arguments and try again!")
-
+     sys.exit(1)
 
 # Configure the logging
 logging.basicConfig(filename='errors.log',level=logging.DEBUG)
@@ -306,8 +294,12 @@ for file in trades:
     symbol = None
     prev_trade_date = None
     prev_trade_time = None
+
+    # The list of exchanges, each exchange has its own NBBO
     exchanges = {}
-    NBBO = {}
+
+    # The global NBBO out of all exchanges for the current trading day
+    NBBO = {'BID': 0, 'OFR': sys.maxint, 'BIDSIZ': 0, 'OFRSIZ': 0}
 
     # Find a matching quotes entry for each line in trades file
     for trade in trades_reader:
@@ -315,7 +307,7 @@ for file in trades:
         trade_date = float_to_int(trade['date'])
         trade_time = convert_mil(trade['time'])
 
-        # Ignore the trade if it occurs is when the markets are closed
+        # Ignore the trade if it occurs when the markets are closed
         if not market_hours(trade_time):
             continue
 
@@ -327,16 +319,13 @@ for file in trades:
         else:
             prev_trade_date = trade_date
             prev_trade_time = trade_time
-            # Initialize new exchanges, NBBO calculations
-            exchanges = {}
-            NBBO = {}
 
         # Iterate through the quotes file to the matching symbol entry and date
         if symbol != quote['SYMBOL']:
             while quotes_reader.line_num < quotes[quotes_file][trade_date][symbol]:
                 quotes_reader.next()
 
-        # Get the data for each entry in the quotes file that has a matching time and date
+        # Get the NBBO for each exchange entry in the quotes file
         while (True):
             try:
                 quote_date = float_to_int(quote['date'])
@@ -348,18 +337,18 @@ for file in trades:
                     quote = quotes_reader.next()
                     continue
 
-                # For each entry with the same symbol, date and time add it to the list of exchanges
-                if trade['symbol'] == quote['SYMBOL'] and trade_date == quote_date and trade_time == quote_time:
-                    # Store bid, ofr, bidsiz, ofrsiz for the exchange, for multiple entries for the same
-                    # exchange the LAST value added is used
-                    exchanges[quote['EX']] = {}
+                # Get the current NBBO for each exchange in the quotes file using the most recent entry
+                if trade['symbol'] == quote['SYMBOL'] and trade_date == quote_date and trade_time >= quote_time:
+                    # Parse the latest NBBO bid, ofr, bidsiz, ofrsiz for each exchange
+                    if not quote['EX'] in exchanges:
+                        exchanges[quote['EX']] = {}
+
                     exchanges[quote['EX']]['BID'] = float(quote['BID'])
                     exchanges[quote['EX']]['OFR'] = float(quote['OFR'])
                     exchanges[quote['EX']]['BIDSIZ'] = float(quote['BIDSIZ'])
                     exchanges[quote['EX']]['OFRSIZ'] = float(quote['OFRSIZ'])
+
                 # Error if NO matching entries in the quotes file has been found
-                # TODO add support to take the data from the previous time entry (within delta seconds),
-                # if there is no data for the current time
                 elif not exchanges and trade['symbol'] == quote['SYMBOL'] and (trade_date < quote_date or trade_time < quote_time):
                     logging.warning(file + " : No quotes entry found for the following trade: " + trade['symbol'] 
                         + ", " + trade_time.isoformat())
@@ -381,8 +370,8 @@ for file in trades:
         # Print the results in exchanges
         #print trade_date, trade_time, exchanges
 
-        # Calculate the NBBO, add the results as a new entry in the taq output buffer
-        NBBO = calculate_NBBO(exchanges)
+        # Calculate the current global NBBO, add the results as a new entry in the taq output buffer
+        calculate_NBBO(NBBO, exchanges)
         add_taq_entry(taq_output, trade, NBBO, exchanges)
 
         # If the TAQ buffer is > 100K lines, flush the buffer to disk
