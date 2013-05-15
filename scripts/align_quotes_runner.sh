@@ -29,14 +29,14 @@
 TRADES_DIR=""
 QUOTES_DIR=""
 OUTPUT_DIR=""
-LOG_DIR=""
+LOG_DIR="log/align_quotes/"
 
 # Make sure the user provided the path
 if [[ -z "$1" ]]
 then
     echo "No path provided" 1>&2
     echo "Usage: $0 {directory with trades files} {directory with quotes files} {output directory for results}" 1>&2
-    echo "Example: $0 /work/user/trades_2012/"
+    echo "Example: $0 trades_2012/ quotes_2012/ separate_quotes_2012/"
     exit 1
 fi
 
@@ -59,9 +59,8 @@ then
 fi
 
 # Make a log directory for the sharnet job execution logs
-if [[ ! -d "log/align_quotes/" ]]
+if [[ ! -d "${LOG_DIR}" ]]
 then
-	LOG_DIR="log/align_quotes/"
     mkdir -p $LOG_DIR
 fi
 
