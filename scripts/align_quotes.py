@@ -140,7 +140,7 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
     taq_entry['symbol']  = trade['symbol']
     taq_entry['shares']  = trade['shares']
     taq_entry['buysell'] = trade['buysell']
-    taq_entry['price']   = trade['price'] 
+    taq_entry['price']   = trade['price']
     taq_entry['type']    = trade['type']
     taq_entry['date']    = trade['date']
 
@@ -167,7 +167,7 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
 
 
 def convert_mil(ms):
-    """Converts a time in milliseconds from midnight format into a 
+    """Converts a time in milliseconds from midnight format into a
     compatible time format of HH:MM:SS, currently the time provided
     in milliseconds is floored to avoid having times in the future.
     """
@@ -202,13 +202,13 @@ def float_to_int(value):
 
 
 def market_hours(time):
-    """Determines if the time provide is within the market operating hours, 
+    """Determines if the time provide is within the market operating hours,
     which are usually between 9:30 and 16:00.
 
     :param time: A datetime.time object of the time to check
     """
-    open = datetime.time(9,30,00)
-    close = datetime.time(16,00,00)
+    open = datetime.time(9, 30, 00)
+    close = datetime.time(16, 00, 00)
 
     if time < open or time > close:
         return False
@@ -216,65 +216,45 @@ def market_hours(time):
     return True
 
 
-
 # The trades file, quotes directory, and resultant taq file
 trades_file = ''
-quotes_dir = ''
+quotes_file = ''
 taq_file = ''
 
 
 # Process command line arguments
 if len(sys.argv) < 4:
     sys.stderr.write("Invalid arguments given\n")
-    sys.stderr.write("Usage: align_quotes.py {trades file} {quotes directory} {output file}\n")
-    sys.stderr.write("Example: " + sys.argv[0] + "trades_08oct2012.csv quotes_2012/ taq_2012.csv\n")
+    sys.stderr.write("Usage: align_quotes.py {trades file} {quotes file} {output file}\n")
+    sys.stderr.write("Example: " + sys.argv[0] + "trades_08oct2012.csv quotes_08oct2012.csv taq_08oct2012.csv\n")
     sys.exit(1)
 
-if os.path.isfile(sys.argv[1]) and os.path.isdir(sys.argv[2]):
+if os.path.isfile(sys.argv[1]) and os.path.isfile(sys.argv[2]):
     # Error if trying to overwrite an existing output file
     if os.path.isfile(sys.argv[3]):
         sys.stderr.write("The output file already exists, please specify a different output file!")
         sys.exit(1)
-    trades_file, quotes_dir, taq_file = sys.argv[1:4]
+    trades_file, quotes_file, taq_file = sys.argv[1:4]
 else:
-     sys.stderr.write("Trades file or quotes directory does not exist, check arguments and try again!")
-     sys.exit(1)
+    sys.stderr.write("Trades or quotes file does not exist, check arguments and try again!")
+    sys.exit(1)
 
 # Configure the logging
-logging.basicConfig(filename='errors.log',level=logging.DEBUG)
+logging.basicConfig(filename='errors.log', level=logging.DEBUG)
 
 
-# Parse each trade/quotes file and determine the order in which to process the files
-trade_dates = trade_dates(trades_file)
-quotes = order_quotes(quotes_dir)
-
-quotes_file = None
-quotes_reader = None
-quote = None
-
-# An buffer of the final taq data to be written to file, which is periodically flushed to disk
+# A buffer of the final taq data to be written to file, which is periodically flushed to disk
 taq_output = list()
 
-# For each trades file iterate through the quotes files and produce a combined file
-for date in trade_dates:
-    # Find the next quotes file which includes the date needed for the trades file
-    for key in quotes:
-        if date in quotes[key]:
-            # Open the quotes file and read the first entry
-            quotes_file = key
-            quotes_csv = open(quotes_file, 'rb')
-            quotes_reader = csv.DictReader(quotes_csv)
-            quote = quotes_reader.next()
-            break
 
-    # If the trades file date was not found in the quotes file, error, skip file
-    if not quotes_file or not date in quotes[quotes_file]:
-        logging.warning(trades_file + " : No quotes entry found for the trades file date, skipping file!")
-        continue
-
-    # Open the trades file and find each corresponding entry in the quotes file
-    trades_csv = open(trades_file, 'rb')
+# For each entry in the trades file, iterate through the quotes files and produce a combined file
+with open(trades_file, 'rb') as trades_csv:
     trades_reader = csv.DictReader(trades_csv)
+
+    # Open the quotes file and read the first entry
+    quotes_csv = open(quotes_file, 'rb')
+    quotes_reader = csv.DictReader(quotes_csv)
+    quote = quotes_reader.next()
 
     # Used to simplify processing duplicate trades file entries
     symbol = None
@@ -285,7 +265,7 @@ for date in trade_dates:
     exchanges = {}
     NBBO = {}
 
-    # Find a matching quotes entry for each line in trades file
+    # Calculate current NBBO/NASDAQ BBO in the quotes file for each line in trades file
     for trade in trades_reader:
         symbol = trade['symbol']
         trade_date = float_to_int(trade['date'])
@@ -304,10 +284,9 @@ for date in trade_dates:
             prev_trade_date = trade_date
             prev_trade_time = trade_time
 
-        # Iterate through the quotes file to the matching symbol entry and date
-        if symbol != quote['SYMBOL'] or trade_date != float_to_int(quote['date']):
-            while quotes_reader.line_num < quotes[quotes_file][trade_date][symbol]:
-                quotes_reader.next()
+        # Iterate through the quotes file to the matching symbol entry
+        while symbol != quote['SYMBOL']:
+            quote = quotes_reader.next()
 
         # Get the NBBO for each exchange entry in the quotes file
         while (True):
@@ -317,7 +296,6 @@ for date in trade_dates:
 
                 # Ignore any quotes that occur when the markets are closed
                 if not market_hours(quote_time):
-                    # Read the next line of the quotes file
                     quote = quotes_reader.next()
                     continue
 
@@ -334,11 +312,11 @@ for date in trade_dates:
 
                 # Error if NO matching entries in the quotes file has been found
                 elif not exchanges and symbol == quote['SYMBOL'] and (trade_date < quote_date or trade_time < quote_time):
-                    logging.warning(trades_file + " : No quotes entry found for the following trade: " + trade['symbol'] 
+                    logging.warning(trades_file + " : No quotes entry found for the following trade: " + trade['symbol']
                         + ", " + trade_time.isoformat())
                     break
                 # Break when the last matching quote entry for the time has been parsed
-                elif exchanges and (symbol != quote['SYMBOL'] or trade_date < quote_date or trade_time < quote_time): 
+                elif exchanges and (symbol != quote['SYMBOL'] or trade_date < quote_date or trade_time < quote_time):
                     break
 
                 # Read the next line of the quotes file
@@ -351,24 +329,19 @@ for date in trade_dates:
                     + " at following trade: " + trade['symbol'] + ", " + trade_time.isoformat())
                 break
 
-        # Print the results in exchanges
-        #print trade_date, trade_time, exchanges
-
         # Calculate the current NBBO out of all exchanges, add the results as a new entry in the taq output buffer
         NBBO = calculate_NBBO(exchanges)
         add_taq_entry(taq_output, trade, NBBO, exchanges)
 
-        # If the TAQ buffer is > 100K lines, flush the buffer to disk
-        if taq_output.__len__() >= 100000:
+        # If the TAQ buffer is > 250K lines, flush the buffer to disk
+        if taq_output.__len__() >= 250000:
             write_taq(taq_output, taq_file)
             taq_output = list()
 
-    # Close open files
-    trades_csv.close()
+    # Close the open quotes files
     quotes_csv.close()
 
 
 # Write any remaining content in the TAQ buffer to disk
 if taq_output:
     write_taq(taq_output, taq_file)
-
