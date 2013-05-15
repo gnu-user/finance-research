@@ -57,7 +57,14 @@ then
      exit 1
 fi
 
-# Change to the directory and execute a job for each trades file
+# Make a log directory for the sharnet job execution logs
+if [[ ! -d "log/" ]]
+then
+    mkdir log/
+fi
+
+
+# Execute a job for each trades file
 for file in ${TRADES_DIR}/*.csv
 do
     # Get the filename, set the output file
@@ -66,6 +73,6 @@ do
     output_file=taq_${file_name/trades_/}.csv
 
     # Process the trades file with align_quotes.py as a job on SHARCNET
-    echo sqsub -r 7d -q serial --memperproc=4G -o ${file_name}.log align_quotes.py ${file} ${QUOTES_DIR} ${OUTPUT_DIR}/${output_file}
+    sqsub -r 7d -q serial --memperproc=4G -o log/${file_name}.log align_quotes.py ${file} ${QUOTES_DIR} ${OUTPUT_DIR}/${output_file}
 done
 
