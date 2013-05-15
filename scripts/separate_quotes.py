@@ -91,7 +91,7 @@ else:
     sys.exit(1)
 
 # Configure the logging
-logging.basicConfig(filename='seperate_quotes_errors.log', level=logging.DEBUG)
+logging.basicConfig(filename='separate_quotes_errors.log', level=logging.DEBUG)
 
 
 # Process the trades file, map the trade file date to the corresponding separate quotes output file
@@ -113,6 +113,13 @@ with open(quotes_file, 'rb') as csvfile:
 
     for quote in reader:
         date = int(float(quote['date']))
+
+        # Log error if there is no matching date for the quote in the trades files
+        if not date in trade_dates:
+            logging.warning(quotes_file + " : No matching date for : " 
+                + date + " found in any trades files, skipping entry!")
+            continue
+
         output_file = trade_dates[date]
 
         # Append the quotes entry to the corresponding output file buffer
