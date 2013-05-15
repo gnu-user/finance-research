@@ -2,9 +2,9 @@
 ###############################################################################
 #
 # A helpful script for aligning quotes entries with the corresponding trades
-# entries and producing a resultant CSV containing the trades with the 
+# entries and producing a resultant CSV containing the trades with the
 # NBBO calculations, as well as the NASDAQ information.
-# 
+#
 # Copyright (C) 2013, Jonathan Gillett
 # All rights reserved.
 #
@@ -29,9 +29,9 @@ import glob
 import csv
 import time
 import datetime
-import math
 import logging
 from collections import OrderedDict
+
 
 def trade_dates(file):
     """Analyzes a trades csv file and returns a list of the corresponding dates
@@ -136,10 +136,10 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
     taq_entry = OrderedDict({})
 
     # Add all trade data columns
-    taq_entry['time']    = trade['time'] 
+    taq_entry['time']    = trade['time']
     taq_entry['symbol']  = trade['symbol']
     taq_entry['shares']  = trade['shares']
-    taq_entry['buysell'] = trade['buysell'] 
+    taq_entry['buysell'] = trade['buysell']
     taq_entry['price']   = trade['price'] 
     taq_entry['type']    = trade['type']
     taq_entry['date']    = trade['date']
