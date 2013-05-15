@@ -361,7 +361,7 @@ for date in trade_dates:
         # If the TAQ buffer is > 100K lines, flush the buffer to disk
         if taq_output.__len__() >= 100000:
             write_taq(taq_output, taq_file)
-            taq_output = {}
+            taq_output = list()
 
     # Close open files
     trades_csv.close()
