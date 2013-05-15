@@ -58,7 +58,7 @@ def order_quotes(dir):
     """
     files = OrderedDict({})
 
-    for file in glob.glob(dir + "*.csv"):
+    for file in glob.glob(os.path.join(os.path.normpath(dir), '*.csv')):
         with open(file, 'rb') as csvfile:
             files[file] = {}
             reader = csv.DictReader(csvfile)
@@ -101,7 +101,7 @@ def calculate_NBBO(exchanges):
                           'OFR'     => 48.00,
                           'BIDSIZ'  => 10,
                           'OFRSIZ'  => 5}
-			   ... }
+               ... }
     """
     # The current NBBO out of all exchanges
     NBBO = {'BID': 0, 'OFR': sys.maxint, 'BIDSIZ': 0, 'OFRSIZ': 0}
