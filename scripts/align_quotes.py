@@ -128,8 +128,7 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
     the format of the new entry added to the TAQ output buffer is
     as follows:
 
-    <All trade data columns>, <BESTBID, BESTOFR, BESTBIDSIZ, BESTOFRSIZ>, 
-    <NSDQBESTBID, NSDQBESTOFR, NSDQBESTBIDSIZ, NSDQBESTOFRSIZ>
+    <All trade columns>, NBB, NBO, NBBSIZ, NBOSIZ, NQBB, NQBO, NQBBSIZ, NQBOSIZ
 
     If there is no available TAQ entry for NASDAQ then the columns in the TAQ output
     will contain 0 for each NSDQ entry.
