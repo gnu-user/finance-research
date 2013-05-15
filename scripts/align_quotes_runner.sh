@@ -29,6 +29,7 @@
 TRADES_DIR=""
 QUOTES_DIR=""
 OUTPUT_DIR=""
+LOG_DIR=""
 
 # Make sure the user provided the path
 if [[ -z "$1" ]]
@@ -58,9 +59,10 @@ then
 fi
 
 # Make a log directory for the sharnet job execution logs
-if [[ ! -d "log/" ]]
+if [[ ! -d "log/align_quotes/" ]]
 then
-    mkdir log/
+	LOG_DIR="log/align_quotes/"
+    mkdir -p $LOG_DIR
 fi
 
 
@@ -73,6 +75,6 @@ do
     output_file=taq_${file_name/trades_/}.csv
 
     # Process the trades file with align_quotes.py as a job on SHARCNET
-    sqsub -r 7d -q serial --memperproc=4G -o log/${file_name}.log align_quotes.py ${file} ${QUOTES_DIR} ${OUTPUT_DIR}/${output_file}
+    sqsub -r 7d -q serial --memperproc=4G -o ${LOG_DIR}/${file_name}.log align_quotes.py ${file} ${QUOTES_DIR} ${OUTPUT_DIR}/${output_file}
 done
 
