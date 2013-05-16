@@ -35,8 +35,8 @@ LOG_DIR="log/align_quotes/"
 if [[ -z "$1" ]]
 then
     echo "No path provided" 1>&2
-    echo "Usage: $0 {directory with trades files} {directory with quotes files} {output directory for results}" 1>&2
-    echo "Example: $0 trades_2012/ quotes_2012/ separate_quotes_2012/"
+    echo "Usage: $0 {trades directory} {quotes directory} {output directory}" 1>&2
+    echo "Example: $0 trades_2012/ quotes_2012/ taq_2012/"
     exit 1
 fi
 
@@ -58,22 +58,23 @@ then
      exit 1
 fi
 
-# Make a log directory for the sharnet job execution logs
+# Make a log directory for the sharcnet job execution logs
 if [[ ! -d "${LOG_DIR}" ]]
 then
     mkdir -p $LOG_DIR
 fi
 
 
-# Execute a job for each trades file
+# Execute a job for each trade and matching quotes file
 for file in ${TRADES_DIR}/*.csv
 do
-    # Get the filename, set the output file
-    file_name=$(basename $file)
-    file_name=${file_name%.*} 
-    output_file=taq_${file_name/trades_/}.csv
+    # Get the trade and quote filename, set the output file
+    trade_file=$(basename $file)
+    trade_file=${trade_file%.*}
+    quote_file=quotes_${trade_file/trades_/}.csv
+    output_file=taq_${trade_file/trades_/}.csv
 
     # Process the trades file with align_quotes.py as a job on SHARCNET
-    sqsub -r 7d -q serial --memperproc=4G -o ${LOG_DIR}/${file_name}.log align_quotes.py ${file} ${QUOTES_DIR} ${OUTPUT_DIR}/${output_file}
+    sqsub -r 7d -q serial --memperproc=4G -o ${LOG_DIR}/${trade_file}.log align_quotes.py ${file} ${QUOTES_DIR}/${quote_file} ${OUTPUT_DIR}/${output_file}
 done
 

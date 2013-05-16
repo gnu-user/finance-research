@@ -53,7 +53,7 @@ def trade_dates(file):
 
 def order_quotes(dir):
     """Analyzes each of the dates in the quotes csv files and returns an ordered
-    list of the files to execute from earliest to latest date and the corresponding 
+    list of the files to execute from earliest to latest date and the corresponding
     dates and the stock tickers, with their line counts, that are covered in each file.
     """
     files = OrderedDict({})
@@ -63,12 +63,10 @@ def order_quotes(dir):
             files[file] = {}
             reader = csv.DictReader(csvfile)
 
-            #print file
             for line in reader:
                 date = int(float(line['date']))
                 if not date in files[file]:
-                    #print file, line['date']
-                    files[file][date] = {line['SYMBOL'] : reader.line_num}
+                    files[file][date] = {line['SYMBOL']: reader.line_num}
                 elif not line['SYMBOL'] in files[file][date]:
                     files[file][date][line['SYMBOL']] = reader.line_num
 
@@ -151,7 +149,7 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
     taq_entry['NBOSIZ'] = NBBO['OFRSIZ']
 
     # Add the NASDAQ NBBO entries if they exist
-    if exchanges.has_key('T'):
+    if 'T' in exchanges:
         taq_entry['NQBB'] = exchanges['T']['BID']
         taq_entry['NQBO'] = exchanges['T']['OFR']
         taq_entry['NQBBSIZ'] = exchanges['T']['BIDSIZ']
@@ -195,7 +193,7 @@ def convert_sec(sec):
 
 
 def float_to_int(value):
-    """Converts a string representation of a float value to an int 
+    """Converts a string representation of a float value to an int
     FLOORING the value (e.g. 2.99 becomes 2)
     """
     return int(float(value))
@@ -230,13 +228,18 @@ if len(sys.argv) < 4:
     sys.exit(1)
 
 if os.path.isfile(sys.argv[1]) and os.path.isfile(sys.argv[2]):
+    # Error if output file is directory
+    if os.path.isdir(sys.argv[3]):
+        sys.stderr.write("The output file cannot be a directory, please specify an output file!\n")
+        sys.exit(1)
+
     # Error if trying to overwrite an existing output file
     if os.path.isfile(sys.argv[3]):
-        sys.stderr.write("The output file already exists, please specify a different output file!")
+        sys.stderr.write("The output file already exists, please specify a different output file!\n")
         sys.exit(1)
     trades_file, quotes_file, taq_file = sys.argv[1:4]
 else:
-    sys.stderr.write("Trades or quotes file does not exist, check arguments and try again!")
+    sys.stderr.write("Trades or quotes file does not exist, check arguments and try again!\n")
     sys.exit(1)
 
 # Configure the logging

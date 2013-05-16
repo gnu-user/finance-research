@@ -32,7 +32,7 @@ LOG_DIR="log/separate_quotes/"
 if [[ -z "$1" ]]
 then
     echo "No path provided" 1>&2
-    echo "Usage: $0 {directory with trades files} {directory with quotes files} {output directory for results}" 1>&2
+    echo "Usage: $0 {trades directory} {quotes directory} {output directory}" 1>&2
     echo "Example: $0 trades_2012/ quotes_2012/ separate_quotes_2012/"
     exit 1
 fi
@@ -55,7 +55,7 @@ then
      exit 1
 fi
 
-# Make a log directory for the sharnet job execution logs
+# Make a log directory for the sharcnet job execution logs
 if [[ ! -d "${LOG_DIR}" ]]
 then
     mkdir -p $LOG_DIR
