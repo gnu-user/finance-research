@@ -128,7 +128,8 @@ with open(quotes_file, 'rb') as csvfile:
         # If the quotes buffer has >= 100K lines, flush the buffer to disk
         if quotes_buffer[output_file].__len__() >= 100000:
             write_quotes(quotes_buffer[output_file], output_dir, output_file)
-            quotes_buffer[output_file] = list()
+            # Clear the buffer in memory
+            del quotes_buffer[output_file][:]
 
 
 # Write any remaining content in the quotes buffer to disk

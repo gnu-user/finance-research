@@ -339,7 +339,8 @@ with open(trades_file, 'rb') as trades_csv:
         # If the TAQ buffer is > 250K lines, flush the buffer to disk
         if taq_output.__len__() >= 250000:
             write_taq(taq_output, taq_file)
-            taq_output = list()
+            # Clear the buffer in memory
+            del taq_output[:]
 
     # Close the open quotes files
     quotes_csv.close()
