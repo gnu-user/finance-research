@@ -75,6 +75,6 @@ do
     output_file=taq_${trade_file/trades_/}.csv
 
     # Process the trades file with align_quotes.py as a job on SHARCNET
-    sqsub -r 5d -q serial --memperproc=6G -o ${LOG_DIR}/${trade_file}.log align_quotes.py ${file} ${QUOTES_DIR}/${quote_file} ${OUTPUT_DIR}/${output_file}
+    sqsub -r 7d -q serial --memperproc=6G -o ${LOG_DIR}/${trade_file}.log align_quotes.py ${file} ${QUOTES_DIR}/${quote_file} ${OUTPUT_DIR}/${output_file}
 done
 
