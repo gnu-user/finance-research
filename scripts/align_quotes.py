@@ -243,7 +243,7 @@ else:
     sys.exit(1)
 
 # Configure the logging
-logging.basicConfig(filename='errors.log', level=logging.DEBUG)
+logging.basicConfig(filename='align_quotes_errors.log', level=logging.DEBUG)
 
 
 # A buffer of the final taq data to be written to file, which is periodically flushed to disk
