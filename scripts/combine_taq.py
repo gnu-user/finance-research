@@ -27,6 +27,7 @@ import os
 import glob
 import csv
 from collections import OrderedDict
+from progressbar import *
 
 
 def process_taq(dir):
@@ -51,6 +52,7 @@ def process_taq(dir):
         ordered_dates[date] = dates_files[date]
 
     return ordered_dates
+
 
 taq_dir = ''
 output_file = ''
@@ -90,5 +92,7 @@ with open(taq_dates[taq_dates.keys()[0]], 'rb') as inputcsvfile:
 
 
 # Use the shell awk and cat commands to concatenate each of the files quickly
-for date in taq_dates:
+progress = ProgressBar(maxval=taq_dates.__len__(), widgets=[Bar('=', '[', ']'), ' ', Percentage()])
+print "Combining TAQ files..."
+for date in progress(taq_dates):
     os.system("awk FNR-1 %s >> %s" % (taq_dates[date], output_file))
