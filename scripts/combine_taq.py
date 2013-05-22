@@ -26,7 +26,6 @@ import sys
 import os
 import glob
 import csv
-import logging
 from collections import OrderedDict
 
 
