@@ -143,10 +143,16 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
     taq_entry['date']    = trade['date']
 
     # Add all NBBO columns
-    taq_entry['NBB'] = NBBO['BID']
-    taq_entry['NBO'] = NBBO['OFR']
-    taq_entry['NBBSIZ'] = NBBO['BIDSIZ']
-    taq_entry['NBOSIZ'] = NBBO['OFRSIZ']
+    if all(k in NBBO for k in ('BID', 'OFR', 'BIDSIZ', 'OFRSIZ')):
+        taq_entry['NBB'] = NBBO['BID']
+        taq_entry['NBO'] = NBBO['OFR']
+        taq_entry['NBBSIZ'] = NBBO['BIDSIZ']
+        taq_entry['NBOSIZ'] = NBBO['OFRSIZ']
+    else:
+        taq_entry['NBB'] = 0
+        taq_entry['NBO'] = 0
+        taq_entry['NBBSIZ'] = 0
+        taq_entry['NBOSIZ'] = 0
 
     # Add the NASDAQ NBBO entries if they exist
     if 'T' in exchanges:
@@ -218,6 +224,7 @@ def market_hours(time):
 trades_file = ''
 quotes_file = ''
 taq_file = ''
+log_file = ''
 
 
 # Process command line arguments
@@ -238,12 +245,13 @@ if os.path.isfile(sys.argv[1]) and os.path.isfile(sys.argv[2]):
         sys.stderr.write("The output file already exists, please specify a different output file!\n")
         sys.exit(1)
     trades_file, quotes_file, taq_file = sys.argv[1:4]
+    log_file = 'errors_' + os.path.basename(taq_file)
 else:
     sys.stderr.write("Trades or quotes file does not exist, check arguments and try again!\n")
     sys.exit(1)
 
 # Configure the logging
-logging.basicConfig(filename='align_quotes_errors.log', level=logging.DEBUG)
+logging.basicConfig(format='', filename=log_file, level=logging.DEBUG)
 
 
 # A buffer of the final taq data to be written to file, which is periodically flushed to disk
@@ -260,7 +268,7 @@ with open(trades_file, 'rb') as trades_csv:
     quote = quotes_reader.next()
 
     # Used to simplify processing duplicate trades file entries
-    symbol = None
+    prev_symbol = None
     prev_trade_date = None
     prev_trade_time = None
 
@@ -279,7 +287,7 @@ with open(trades_file, 'rb') as trades_csv:
             continue
 
         # If the current date and time is the same, use the previous results
-        if prev_trade_date == trade_date and prev_trade_time == trade_time:
+        if prev_symbol == symbol and prev_trade_date == trade_date and prev_trade_time == trade_time:
             # Use the data for the current trade, duplicate the previous NBBO calculations
             add_taq_entry(taq_output, trade, NBBO, exchanges)
             continue
@@ -287,12 +295,31 @@ with open(trades_file, 'rb') as trades_csv:
             prev_trade_date = trade_date
             prev_trade_time = trade_time
 
+        # Reset the exchanges and NBBO for the new symbol
+        if prev_symbol and (prev_symbol != symbol):
+            exchanges.clear()
+            NBBO.clear()
+
+        # Set the previous symbol to the current
+        prev_symbol = symbol
+
         # Iterate through the quotes file to the matching symbol entry
-        while symbol != quote['SYMBOL']:
-            quote = quotes_reader.next()
+        while symbol > quote['SYMBOL']:
+            try:
+                quote = quotes_reader.next()
+            except StopIteration:
+                logging.warning(quotes_file + " : Ended before trades file :" + trades_file
+                    + " at following trade: " + trade['symbol'] + ", " + trade_time.isoformat())
+                break
+
+        # If no matching entry in the quotes file add the most recent results, the NBBx results can
+        # be all 0 in the case where there is no matching symbol in the quotes file
+        if symbol < quote['SYMBOL']:
+            add_taq_entry(taq_output, trade, NBBO, exchanges)
+            continue
 
         # Get the NBBO for each exchange entry in the quotes file
-        while (True):
+        while (symbol == quote['SYMBOL']):
             try:
                 quote_date = float_to_int(quote['date'])
                 quote_time = convert_sec(quote['time'])
@@ -303,7 +330,7 @@ with open(trades_file, 'rb') as trades_csv:
                     continue
 
                 # Get the current NBBO for each exchange in the quotes file using the most recent entry
-                if symbol == quote['SYMBOL'] and trade_date == quote_date and trade_time >= quote_time:
+                if trade_date == quote_date and trade_time >= quote_time:
                     # Parse the latest NBBO bid, ofr, bidsiz, ofrsiz for each exchange
                     if not quote['EX'] in exchanges:
                         exchanges[quote['EX']] = {}
@@ -314,7 +341,7 @@ with open(trades_file, 'rb') as trades_csv:
                     exchanges[quote['EX']]['OFRSIZ'] = float(quote['OFRSIZ'])
 
                 # Error if NO matching entries in the quotes file has been found
-                elif not exchanges and symbol == quote['SYMBOL'] and (trade_date < quote_date or trade_time < quote_time):
+                elif not exchanges and (trade_date < quote_date or trade_time < quote_time):
                     logging.warning(trades_file + " : No quotes entry found for the following trade: " + trade['symbol']
                         + ", " + trade_time.isoformat())
                     break
