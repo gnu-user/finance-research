@@ -27,10 +27,9 @@ import sys
 import os
 import glob
 import csv
-import time
-import datetime
 import logging
 from collections import OrderedDict
+from util import *
 
 
 def trade_dates(file):
@@ -168,56 +167,6 @@ def add_taq_entry(taq_output, trade, NBBO, exchanges):
 
     # Append the TAQ entry to the TAQ output buffer
     taq_output.append(taq_entry)
-
-
-def convert_mil(ms):
-    """Converts a time in milliseconds from midnight format into a
-    compatible time format of HH:MM:SS, currently the time provided
-    in milliseconds is floored to avoid having times in the future.
-    """
-    # Floor the results to avoid rounding errors for seconds entries
-    ms = int(float(ms))
-    hour = (ms / 3600000) % 24
-    min = (ms / 60000) % 60
-    sec = (ms / 1000) % 60
-
-    return datetime.time(hour, min, sec)
-
-
-def convert_sec(sec):
-    """Converts a time in seconds from midnight format into compatible
-    time format of HH:MM:SS
-    """
-
-    # Ensure the value is an integer
-    sec = int(float(sec))
-    hour = (sec / 3600) % 24
-    min = (sec / 60) % 60
-    sec = sec % 60
-
-    return datetime.time(hour, min, sec)
-
-
-def float_to_int(value):
-    """Converts a string representation of a float value to an int
-    FLOORING the value (e.g. 2.99 becomes 2)
-    """
-    return int(float(value))
-
-
-def market_hours(time):
-    """Determines if the time provide is within the market operating hours,
-    which are usually between 9:30 and 16:00.
-
-    :param time: A datetime.time object of the time to check
-    """
-    open = datetime.time(9, 30, 00)
-    close = datetime.time(16, 00, 00)
-
-    if time < open or time > close:
-        return False
-
-    return True
 
 
 # The trades file, quotes directory, and resultant taq file
