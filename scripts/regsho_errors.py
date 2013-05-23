@@ -28,24 +28,26 @@ import csv
 import logging
 
 regsho_file = ''
-regsho_filename = ''
+output_dir = ''
+output_file  = ''
 
 # Process command line arguments
-if len(sys.argv) < 2:
+if len(sys.argv) < 3:
     sys.stderr.write("Invalid arguments given\n")
-    sys.stderr.write("Usage: regsho_errors.py {regsho file}\n")
-    sys.stderr.write("Example: regsho_errors.py regsho_20080801.txt\n")
+    sys.stderr.write("Usage: regsho_errors.py {regsho file} {error log directory}\n")
+    sys.stderr.write("Example: regsho_errors.py regsho_20080801.txt errors/regsho/\n")
     sys.exit(1)
 
-if os.path.isfile(sys.argv[1]):
-    regsho_file = sys.argv[1]
+if os.path.isfile(sys.argv[1]) and os.path.isdir(sys.argv[2]):
+    regsho_file, output_dir = sys.argv[1:3]
 else:
-    sys.stderr.write("File does not exist, check arguments and try again!\n")
+    sys.stderr.write("File or directory does not exist, check arguments and try again!\n")
     sys.exit(1)
 
 # Configure the logging
-regsho_filename = os.path.basename(regsho_file).replace('.txt', '')
-logging.basicConfig(format='', filename=regsho_filename + '_errors.log', level=logging.DEBUG)
+regsho_filename = os.path.basename(regsho_file).replace('.txt', '') + '_errors.log'
+output_file = os.path.join(os.path.normpath(output_dir), regsho_filename)
+logging.basicConfig(format='', filename=output_file, level=logging.DEBUG)
 
 
 # Process each entry in the regsho file and determine if there are any errors in the data
