@@ -54,6 +54,13 @@ def convert_sec(sec):
     return datetime.time(hour, min, sec)
 
 
+def convert_str(time):
+    """Convers a time that is a string of the format HH:MM:SS into a compatible
+    time format object of HH:MM:SS
+    """
+    return datetime.datetime.strptime(time, '%H:%M:%S').time()
+
+
 def float_to_int(value):
     """Converts a string representation of a float value to an int
     FLOORING the value (e.g. 2.99 becomes 2)
