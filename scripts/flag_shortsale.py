@@ -180,6 +180,21 @@ with open(taq_file, 'rb') as taq_csv:
         if not market_hours(trade_time):
             continue
 
+        # If the previous trade time is the same add it to the list of trades
+        if prev_trade_time == trade_time:
+            trades.append(trade)
+            continue
+
+        # If the current symbol or trade time differs, match and add any outstanding trades
+        if (symbol != shortsale['Symbol'] or prev_trade_time < trade_time) and trades:
+            for (trade_entry, shortsale_entry) in matching_entries(trades, shortsales):
+                add_entry(buffer, trade_entry, shortsale_entry)
+            # Clear the lists
+            del trades[:]
+            del shortsales[:]
+
+        prev_trade_time = trade_time
+
         # Iterate through the shortsale file to the matching symbol entry
         while symbol > shortsale['Symbol']:
             try:
@@ -194,16 +209,6 @@ with open(taq_file, 'rb') as taq_csv:
             add_entry(buffer, trade, {})
             continue
 
-        # If the current symbol or trade time differs, match and add any outstanding trades
-        if (symbol != shortsale['Symbol'] or prev_trade_time < trade_time) and trades:
-            for (trade_entry, shortsale_entry) in matching_entries(trades, shortsales):
-                add_entry(buffer, trade_entry, shortsale_entry)
-            # Clear the lists
-            del trades[:]
-            del shortsales[:]
-
-        prev_trade_time = trade_time
-
         # Flag any trades in the taq file as shortsales that are matched in the shortsales file
         while (True):
             try:
@@ -216,9 +221,13 @@ with open(taq_file, 'rb') as taq_csv:
 
                 # Flag any trades that have an exact match in the shortsale file
                 if symbol == shortsale['Symbol'] and trade_time == shortsale_time:
+                    # Handle processing multiple trades that occur at the same time as
+                    # a limited number of shortsale entries
                     trades.append(trade)
-                    shortsales.append(shortsale)
-                    shortsale = shortsale_reader.next()
+                    while trade_time == shortsale_time:
+                        shortsales.append(shortsale)
+                        shortsale = shortsale_reader.next()
+                        shortsale_time = convert_str(shortsale['Time'])
                     break
                 # Break symbol has changed or the shortsale time is greater, trade is NOT a shortsale
                 elif symbol != shortsale['Symbol'] or trade_time < shortsale_time:
