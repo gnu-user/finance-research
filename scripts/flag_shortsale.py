@@ -168,7 +168,8 @@ with open(taq_file, 'rb') as taq_csv:
     shortsale_reader = csv.DictReader(shortsale_csv, delimiter='|')
     shortsale = shortsale_reader.next()
 
-    prev_trade_time = None
+    # Initialize the previous time to 1 second prior to the opening time
+    prev_trade_time = datetime.time(9, 29, 59)
 
     # Flag each matched trade in the aligned taq file that is a shortsale
     for trade in taq_reader:
@@ -193,8 +194,8 @@ with open(taq_file, 'rb') as taq_csv:
             add_entry(buffer, trade, {})
             continue
 
-        # If the current trade time to match differs, match and add any outstanding trades
-        if prev_trade_time and prev_trade_time < trade_time and trades:
+        # If the current symbol or trade time differs, match and add any outstanding trades
+        if (symbol != shortsale['Symbol'] or prev_trade_time < trade_time) and trades:
             for (trade_entry, shortsale_entry) in matching_entries(trades, shortsales):
                 add_entry(buffer, trade_entry, shortsale_entry)
             # Clear the lists
