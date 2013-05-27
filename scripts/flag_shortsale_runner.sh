@@ -73,6 +73,5 @@ do
     output_file=taq_sh_${taq_file/taq_/}.csv
 
     # Process the taq file with flag_shortsale.py as a job on SHARCNET
-    sqsub -r 4h -q serial --memperproc=4G -o ${LOG_DIR}/${taq_file}.log flag_shortsale.py ${file} ${SHORTSALE_DIR}/${shortsale_file} ${OUTPUT_DIR}/${output_file}
+    sqsub -r 1h -q serial --memperproc=3G -o ${LOG_DIR}/${taq_file}.log flag_shortsale.py ${file} ${SHORTSALE_DIR}/${shortsale_file} ${OUTPUT_DIR}/${output_file}
 done
-
