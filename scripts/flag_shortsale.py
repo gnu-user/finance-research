@@ -87,6 +87,35 @@ def add_entry(buffer, trade, shortsale):
     buffer.append(taq_entry)
 
 
+def matching_entries(trades, shortsales):
+    """Matches the trades to shortsales with the same volume (size) or shares
+    and returns a tuple containing the trade and matching shortsale. If there
+    is no matching shortsale for the corresponding trade an empty dictionary
+    is returned for the shortsale.
+    """
+    unmatched_trades = list(trades)
+    unmatched_shortsales = list(shortsales)
+
+    # Yield all matching trades and shortsale entries
+    for i in range(len(trades)):
+        for j in range(len(shortsales)):
+            if float_to_int(trades[i]['shares']) == float_to_int(shortsales[j]['ShortSize']):
+                unmatched_trades.remove(trades[i])
+                unmatched_shortsales.remove(shortsales[j])
+                yield (trades[i], shortsales.pop(j))
+                break
+
+    # Log any unmatched shortsales as errors
+    for shortsale in unmatched_shortsales:
+        logging.warning(shortsale_file + " : No matching trade in: " + taq_file
+            + " for following shortsale: " + shortsale['Symbol'] + ", " + shortsale['Time']
+            + ", " + shortsale['Price'] + ", " + shortsale['ShortSize'])
+
+    # Return any unmatched trades with empty shortsales
+    for trade in unmatched_trades:
+        yield (trade, {})
+
+
 # The trades file, quotes directory, and resultant taq file
 taq_file = ''
 shortsale_file = ''
@@ -126,6 +155,9 @@ logging.basicConfig(format='', filename=log_file, level=logging.DEBUG)
 # A buffer of the final data to be written to file, which is periodically flushed to disk
 buffer = list()
 
+# A list of trades and shortsales that occur at the same time, which are then matched
+trades = list()
+shortsales = list()
 
 # For each entry in the aligned taq file iterate through the shortsale file and flag shortsale trades
 with open(taq_file, 'rb') as taq_csv:
@@ -135,6 +167,8 @@ with open(taq_file, 'rb') as taq_csv:
     shortsale_csv = open(shortsale_file, 'rb')
     shortsale_reader = csv.DictReader(shortsale_csv, delimiter='|')
     shortsale = shortsale_reader.next()
+
+    prev_trade_time = None
 
     # Flag each matched trade in the aligned taq file that is a shortsale
     for trade in taq_reader:
@@ -159,6 +193,16 @@ with open(taq_file, 'rb') as taq_csv:
             add_entry(buffer, trade, {})
             continue
 
+        # If the current trade time to match differs, match and add any outstanding trades
+        if prev_trade_time and prev_trade_time < trade_time and trades:
+            for (trade_entry, shortsale_entry) in matching_entries(trades, shortsales):
+                add_entry(buffer, trade_entry, shortsale_entry)
+            # Clear the lists
+            del trades[:]
+            del shortsales[:]
+
+        prev_trade_time = trade_time
+
         # Flag any trades in the taq file as shortsales that are matched in the shortsales file
         while (True):
             try:
@@ -171,12 +215,13 @@ with open(taq_file, 'rb') as taq_csv:
 
                 # Flag any trades that have an exact match in the shortsale file
                 if symbol == shortsale['Symbol'] and trade_time == shortsale_time:
-                    add_entry(buffer, trade, shortsale)
+                    trades.append(trade)
+                    shortsales.append(shortsale)
                     shortsale = shortsale_reader.next()
                     break
                 # Break symbol has changed or the shortsale time is greater, trade is NOT a shortsale
                 elif symbol != shortsale['Symbol'] or trade_time < shortsale_time:
-                    add_entry(buffer, trade, {})
+                    trades.append(trade)
                     break
 
                 # Read the next line of the shortsale file
@@ -197,6 +242,11 @@ with open(taq_file, 'rb') as taq_csv:
     # Close the open files
     shortsale_csv.close()
 
+
+# Add any outstanding trades to the buffer
+if trades:
+    for (trade_entry, shortsale_entry) in matching_entries(trades, shortsales):
+        add_entry(buffer, trade_entry, shortsale_entry)
 
 # Write any remaining content in the buffer to disk
 if buffer:
