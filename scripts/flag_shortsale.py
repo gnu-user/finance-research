@@ -77,10 +77,12 @@ def add_entry(buffer, trade, shortsale):
     if 'ShortType' in shortsale and 'ShortSize' in shortsale:
         taq_entry['ShortSale'] = 1
         taq_entry['ShortType'] = shortsale['ShortType']
+        taq_entry['LinkIndicator'] = shortsale['LinkIndicator']
         taq_entry['ShortSize'] = shortsale['ShortSize']
     else:
         taq_entry['ShortSale'] = 0
         taq_entry['ShortType'] = ''
+        taq_entry['LinkIndicator'] = ''
         taq_entry['ShortSize'] = 0
 
     # Append the TAQ entry to the TAQ output buffer
@@ -99,7 +101,7 @@ def matching_entries(trades, shortsales):
     # Yield all matching trades and shortsale entries
     for i in range(len(trades)):
         for j in range(len(shortsales)):
-            if float_to_int(trades[i]['shares']) == float_to_int(shortsales[j]['ShortSize']):
+            if float_to_int(trades[i]['shares']) == float_to_int(shortsales[j]['Size']):
                 unmatched_trades.remove(trades[i])
                 unmatched_shortsales.remove(shortsales[j])
                 yield (trades[i], shortsales.pop(j))
@@ -109,7 +111,7 @@ def matching_entries(trades, shortsales):
     for shortsale in unmatched_shortsales:
         logging.warning(shortsale_file + " : No matching trade in: " + taq_file
             + " for following shortsale: " + shortsale['Symbol'] + ", " + shortsale['Time']
-            + ", " + shortsale['Price'] + ", " + shortsale['ShortSize'])
+            + ", " + shortsale['Price'] + ", " + shortsale['Size'])
 
     # Return any unmatched trades with empty shortsales
     for trade in unmatched_trades:
