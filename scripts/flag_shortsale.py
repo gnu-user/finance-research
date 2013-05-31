@@ -226,9 +226,11 @@ with open(taq_file, 'rb') as taq_csv:
                     # Handle processing multiple trades that occur at the same time as
                     # a limited number of shortsale entries
                     trades.append(trade)
-                    while trade_time == shortsale_time:
+                    shortsale_symbol = shortsale['Symbol']
+                    while symbol == shortsale_symbol and trade_time == shortsale_time:
                         shortsales.append(shortsale)
                         shortsale = shortsale_reader.next()
+                        shortsale_symbol = shortsale['Symbol']
                         shortsale_time = convert_str(shortsale['Time'])
                     break
                 # Break symbol has changed or the shortsale time is greater, trade is NOT a shortsale
