@@ -32,12 +32,15 @@ def convert_mil(ms):
     in milliseconds is floored to avoid having times in the future.
     """
     # Floor the results to avoid rounding errors for seconds entries
-    ms = int(float(ms))
-    hour = (ms / 3600000) % 24
-    min = (ms / 60000) % 60
-    sec = (ms / 1000) % 60
+    try:
+        ms = int(float(ms))
+        hour = (ms / 3600000) % 24
+        min = (ms / 60000) % 60
+        sec = (ms / 1000) % 60
 
-    return datetime.time(hour, min, sec)
+        return datetime.time(hour, min, sec)
+    except ValueError:
+        return None
 
 
 def convert_sec(sec):
@@ -46,26 +49,35 @@ def convert_sec(sec):
     """
 
     # Ensure the value is an integer
-    sec = int(float(sec))
-    hour = (sec / 3600) % 24
-    min = (sec / 60) % 60
-    sec = sec % 60
+    try:
+        sec = int(float(sec))
+        hour = (sec / 3600) % 24
+        min = (sec / 60) % 60
+        sec = sec % 60
 
-    return datetime.time(hour, min, sec)
+        return datetime.time(hour, min, sec)
+    except ValueError:
+        return None
 
 
 def convert_str(time):
     """Convers a time that is a string of the format HH:MM:SS into a compatible
     time format object of HH:MM:SS
     """
-    return datetime.datetime.strptime(time, '%H:%M:%S').time()
+    try:
+        return datetime.datetime.strptime(time, '%H:%M:%S').time()
+    except ValueError:
+        return None
 
 
 def float_to_int(value):
     """Converts a string representation of a float value to an int
     FLOORING the value (e.g. 2.99 becomes 2)
     """
-    return int(float(value))
+    try:
+        return int(float(value))
+    except ValueError:
+        return None
 
 
 def market_hours(time):
