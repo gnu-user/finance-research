@@ -89,7 +89,10 @@ def market_hours(time):
     open = datetime.time(9, 30, 00)
     close = datetime.time(16, 00, 00)
 
-    if time < open or time > close:
-        return False
+    try:
+        if time < open or time > close:
+            return False
 
-    return True
+        return True
+    except:
+        return False
