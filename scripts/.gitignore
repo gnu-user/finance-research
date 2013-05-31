@@ -84,3 +84,8 @@ nosetests.xml
 *.vrb
 *.xdy
 *.tdo
+
+# R git ignores
+.Rhistory
+.RData
+.Rproj.user
