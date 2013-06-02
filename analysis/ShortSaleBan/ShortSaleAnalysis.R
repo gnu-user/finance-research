@@ -39,9 +39,10 @@ summary_stats <- function(data)
 {
   # List of columns and summary statistics to calculate on the data
   return(data[,list(
-                  min_shares=min(shares), mean_shares=mean(shares), max_shares=max(shares), sd_shares=sd(shares),
+                  n=NROW(price), 
+                  min_shares=min(shares), mean_shares=mean(shares), max_shares=max(shares), sd_shares=sd(shares), sum_shares=sum(shares), 
                   min_price=min(price), mean_price=mean(price), max_price=max(price), sd_price=sd(price),
-                  min_vol=min(volume), mean_vol=mean(volume), max_vol=max(volume), sd_vol=sd(volume),
+                  min_vol=min(volume), mean_vol=mean(volume), max_vol=max(volume), sd_vol=sd(volume), sum_vol=sum(volume), 
                   min_NBB=min(NBB), mean_NBB=mean(NBB), max_NBB=max(NBB), sd_NBB=sd(NBB),
                   min_NBO=min(NBO), mean_NBO=mean(NBO), max_NBO=max(NBO), sd_NBO=sd(NBO),
                   min_NBBSIZ=min(NBBSIZ), mean_NBBSIZ=mean(NBBSIZ), max_NBBSIZ=max(NBBSIZ), sd_NBBSIZ=sd(NBBSIZ),
@@ -52,7 +53,7 @@ summary_stats <- function(data)
                   min_NQBOSIZ=min(NQBOSIZ), mean_NQBOSIZ=mean(NQBOSIZ), max_NQBOSIZ=max(NQBOSIZ), sd_NQBOSIZ=sd(NQBOSIZ)
                 ),
               by="time,symbol,buysell,type,ShortSale"])
-  }
+}
 
 # Directory containing the files to parse and analyze
 file_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/separate"
@@ -115,6 +116,7 @@ for (file in filenames)
   
   # Free up memory
   rm(taq,results)
+  gc()
 }
 
 # Write the results to CSV file
