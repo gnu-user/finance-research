@@ -2,6 +2,7 @@ library(stringr)
 library(xts)
 library(data.table)
 
+
 # A function that gets the actual date of the file from the filename
 # The argument is the name of the file
 date_from_name <- function(filename)
@@ -17,6 +18,7 @@ date_from_name <- function(filename)
   return(paste(match[4], date_num[match[3]], match[2], sep="-"))
 }
 
+
 # A function that can be mapped to each time in order to create a proper POSIXct datetime
 # The first argument is the date as a string (e.g. 2008-12-25)
 # The second argument is the time in milliseconds from midnight format
@@ -31,6 +33,7 @@ convert_time <- function(date, time)
   datetime = paste(date, time_str)
   return(as.POSIXct(strptime(datetime, "%Y-%m-%d %H:%M:%S")))
 }
+
 
 # Gather some basic summary statistics on the data, such as the min,mean,max, and sd
 # For each type of trade (NN, HN, ...) and based on whether it is a shortsale or not
@@ -54,6 +57,7 @@ summary_stats <- function(data)
                 ),
               by="time,symbol,buysell,type,ShortSale"])
 }
+
 
 # Directory containing the files to parse and analyze
 file_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/separate"

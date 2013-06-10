@@ -152,8 +152,7 @@ setkey(ban_list, Ticker, Exchange)
 
 
 # Add columns to final results for identifying which stocks were banned, and the start and end period
-test <- final_results
-test <- test[, banned := FALSE]
+final_results[, banned := FALSE]
 
 # Mark each banned stock as TRUE, with the add and expiry date
 for (ticker in ban_list$Ticker)
@@ -191,14 +190,17 @@ for (i in 1:N)
     # The date the symbol was banned
     ban_date <- symbol_means[symbol == ban_symbol, AddDate][1]
     
-    # The number of days the symbol was banned
-    days_banned <- NROW(symbol_means[time >= start_date & time < ban_date & symbol == ban_symbol])
+    # The number of days the symbol was banned (based on the days it was listed)
+    days_banned <- NROW(symbol_means[symbol == ban_symbol & time >= start_date & time < ban_date])
     
-    # Create a temporary list of candidate stocks that exist during the same pre-ban period
-    for (ticker in symbol_means[J(start_date,FALSE,FALSE), symbol]$symbol)
+    # Get the list of dates the symbol was listed as banned
+    dates <- symbol_means[symbol == ban_symbol & time >= start_date & time < ban_date, time]
+    
+    # Create a temporary list of candidate stocks that exist on the same days during the pre-ban period
+    for (ticker in unique(symbol_means[J(dates,FALSE,FALSE), nomatch=0]$symbol))
     {
-      # IF the stock exists during the pre-ban period add it as a candidate
-      if (NROW(symbol_means[time >= start_date & time < ban_date & symbol == ticker]) >= days_banned)
+      # IF the stock exists during the pre-ban period on all of the same days add it as a candidate
+      if (NROW(symbol_means[J(dates,FALSE,FALSE,ticker), nomatch=0]) == days_banned)
       {
         if (exists("candidates"))
         {
@@ -210,10 +212,7 @@ for (i in 1:N)
         }
       }
     }
-    
-    # Get the list of dates the symbol was banned
-    dates <- symbol_means[time >= start_date & time < ban_date & symbol == ban_symbol, time]
-    
+        
     # Store the candidates in the data table that will contain the differences
     total_differences <- symbol_means[time %in% dates & symbol %in% candidates, list(time, symbol, mean_price, mean_vol)]
     setkey(total_differences,symbol)
