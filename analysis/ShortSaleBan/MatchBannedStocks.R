@@ -167,7 +167,7 @@ setkey(final_results, time, symbol, buysell, type, ShortSale, banned)
 
 
 # Create a new data table containing the mean price and volume for each symbol for all types
-symbol_means <- final_results[,list(mean_price=mean(mean_price), mean_vol=mean(mean_vol), matched=FALSE), by="time,symbol,banned,AddDate"]
+symbol_means <- final_results[,list(matched=FALSE, mean_price=mean(mean_price), mean_vol=mean(mean_vol)), by="time,symbol,banned,AddDate"]
 setkey(symbol_means,time,banned,matched,symbol)
 
 # Get the list of banned symbols
@@ -175,6 +175,8 @@ banned <- symbol_means[banned == TRUE, list(symbol=unique(symbol))]$symbol
 
 # Set N, the number or random permutations of the banned symbols list to generate, currently 2 * number banned symbols
 N = 2 * NROW(banned)
+
+start_time <- proc.time()
 
 # For each random permutation of the banned stocks keep a record of the best match for each banned symbol
 for (i in 1:N)
@@ -194,25 +196,13 @@ for (i in 1:N)
     days_banned <- NROW(symbol_means[symbol == ban_symbol & time >= start_date & time < ban_date])
     
     # Get the list of dates the symbol was listed as banned
-    dates <- symbol_means[symbol == ban_symbol & time >= start_date & time < ban_date, time]
+    dates <- symbol_means[symbol == ban_symbol & time >= start_date & time < ban_date, time]  
     
-    # Create a temporary list of candidate stocks that exist on the same days during the pre-ban period
-    for (ticker in unique(symbol_means[J(dates,FALSE,FALSE), nomatch=0]$symbol))
-    {
-      # IF the stock exists during the pre-ban period on all of the same days add it as a candidate
-      if (NROW(symbol_means[J(dates,FALSE,FALSE,ticker), nomatch=0]) == days_banned)
-      {
-        if (exists("candidates"))
-        {
-          candidates <- c(candidates, ticker)
-        }
-        else
-        {
-          candidates <- ticker
-        }
-      }
-    }
-        
+    # Get a list of candidate stocks which occurr at the same time
+    temp <- symbol_means[J(dates,FALSE,FALSE),list(n=NROW(time)), nomatch=0, by="symbol"]
+    setkey(temp, symbol, n)
+    candidates <- temp[n == days_banned]$symbol
+
     # Store the candidates in the data table that will contain the differences
     total_differences <- symbol_means[time %in% dates & symbol %in% candidates, list(time, symbol, mean_price, mean_vol)]
     setkey(total_differences,symbol)
@@ -237,7 +227,12 @@ for (i in 1:N)
     setkey(sum_differences, sum_mean)
     best_match <- sum_differences[1,symbol]
     
-    results <- data.table(ban_symbol = ban_symbol, best_match = best_match, frequency = 1)
+    results <- data.table(symbol = ban_symbol, 
+                          match = best_match, 
+                          frequency = 1, 
+                          sum_price = sum_differences[1,sum_price],
+                          sum_vol = sum_differences[1,sum_vol],
+                          sum_mean = sum_differences[1,sum_mean])
     
     # Add the results to the matched symbol histogram, update the frequency of the match
     if (exists("matched_hist"))
@@ -255,15 +250,20 @@ for (i in 1:N)
     {
       # Create the initial matched histogram, set the keys
       matched_hist <- results
-      setkey(matched_hist, ban_symbol, best_match)
     }
     
     # Mark the best matched symbol used as matched
     symbol_means[symbol == best_match, matched := TRUE]
+    setkey(symbol_means,time,banned,matched,symbol)
+    setkey(matched_hist, symbol, match)
     
     # Clean up temporary data.tables
-    rm(candidates, total_differences, sum_differences, results)
+    #rm(dates, candidates, total_differences, sum_differences, results)
   }
-  
+    
   # Reset the list of matched symbols for the next permutation of the banned symbols
+  symbol_means[,matched := FALSE]
+  setkey(symbol_means,time,banned,matched,symbol)
 }
+
+proc.time() - start_time
