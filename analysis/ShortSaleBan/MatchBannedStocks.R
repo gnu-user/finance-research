@@ -174,9 +174,8 @@ setkey(symbol_means,time,banned,matched,symbol)
 banned <- symbol_means[banned == TRUE, list(symbol=unique(symbol))]$symbol
 
 # Set N, the number or random permutations of the banned symbols list to generate, currently 2 * number banned symbols
-N = 2 * NROW(banned)
-
-start_time <- proc.time()
+#N <- 2 * NROW(banned)
+N <- 150
 
 # For each random permutation of the banned stocks keep a record of the best match for each banned symbol
 for (i in 1:N)
@@ -266,4 +265,54 @@ for (i in 1:N)
   setkey(symbol_means,time,banned,matched,symbol)
 }
 
-proc.time() - start_time
+
+
+# For each matched symbol resolve any conflicts and produce the final_matched table
+for (entry in matched_hist[, list(symbol=unique(symbol))]$symbol)
+{
+  # For each symbol use the match with the highest frequency out of all other symbols matched to that match
+  for (candidate in matched_hist["ABCB"][order(-frequency)]$match)
+  {
+    # If the candidate symbol has a frequency equal to N then it was matched everytime
+    if (matched_hist[J(entry,candidate)]$frequency == N)
+    {
+      final_match <- candidate
+      break
+    }
+    # If the candidate symbol is only matched to the current entry, it is the best match
+    if (NROW(matched_hist[match == candidate]) == 1)
+    {
+      final_match <- candidate
+      break
+    }
+    # If the candidate symbol has the highest frequency out of all other symbols also matched to it, it is the best match
+    else
+    {
+      
+    }
+  }
+  
+  if (exists("final_match"))
+  {
+    # Get the results for the final match for the current symbol
+    results <- matched_hist[J(entry,final_match)]
+  }
+  else
+  {
+    # There was no match at all, mark the entry as NA, and try and match it manually
+    # This should not happen, try increasing the size of N and re-running the script
+    results <- data.table(symbol=entry, match=NA, frequency=NA, sum_price=NA, sum_vol=NA, sum_mean=NA)
+  }
+  
+  # Add the final matched results to list of all matched symbols
+  if (exists("final_matched"))
+  {
+    final_matched <- rbind(final_matched, results)
+  }
+  else
+  {
+    final_matched <- results
+  }
+}
+
+
