@@ -96,3 +96,33 @@ def market_hours(time):
         return True
     except:
         return False
+
+
+def time_delta(before, after):
+    """Determines the number of seconds difference between two times.
+
+    :param before: A datetime.time object of the time before
+    :param after: A datetime.time object of the time after
+    """
+    # Create a placeholder date
+    date = datetime.datetime(1984, 1, 1)
+
+    # Get the time delta between the two times
+    before_time = date.combine(date, before)
+    after_time = date.combine(date, after)
+    return (after_time - before_time).seconds
+
+
+def add_seconds(time, seconds):
+    """Adds the specified number of seconds to the time provided and returns a
+    datetime.time object
+
+    :param time: A datetime.time object of the time to add seconds to.
+    :param seconds: An integer, the number of seconds to add
+    """
+    # Create a placeholder date
+    date = datetime.datetime(1984, 1, 1)
+
+    # Get the new time
+    orig_time = date.combine(date, time)
+    return (orig_time + datetime.timedelta(0, seconds)).time()
