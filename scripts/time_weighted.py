@@ -224,7 +224,7 @@ with open(taq_file, 'rb') as taq_csv:
                 trade = taq_reader.next()
             except StopIteration:
                 logging.warning(taq_file + " : Ended at following trade: " 
-                    + trade['symbol'] + ", " + convert_mil(trade['time']))
+                    + trade['symbol'] + ", " + convert_mil(trade['time']).isoformat())
                 break
 
         # Ignore the trade if it occurs when the markets are closed
