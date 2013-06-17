@@ -69,6 +69,6 @@ do
     output_file=taq_time_${taq_file/taq_/}.csv
 
     # Process the taq file with time_weighted.py as a job on SHARCNET
-    sqsub -r 1d -q serial --mpp=6G -o ${LOG_DIR}/${taq_file}.log time_weighted.py ${file} ${OUTPUT_DIR}/${output_file}
+    sqsub -r 3h -q serial --mpp=2G -o ${LOG_DIR}/${taq_file}.log time_weighted.py ${file} ${OUTPUT_DIR}/${output_file}
 done
 
