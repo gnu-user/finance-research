@@ -114,7 +114,7 @@ def add_RPI5(buffer):
     """
     for i in xrange(0, len(buffer)):
         # Set the 5 minute offset to the last value if within < 5 closing
-        if i >= len(buffer) - 301:
+        if i >= (len(buffer) - 301):
             offset = (len(buffer) - 1) - i
         else:
             offset = 300
@@ -271,10 +271,9 @@ with open(taq_file, 'rb') as taq_csv:
             # Clear the buffer in memory
             del buffer[:]
 
-    # Repeat the entry up to and including the end of the market period
+    # For the very last trade, repeat the entry up to and including the end of the market period
     if cur_trade_time <= end:
         RQHS = calc_RQHS(cur_trade)
-
         for seconds in xrange(0, time_delta(cur_trade_time, end) + 1):
             trade_time = add_seconds(cur_trade_time, seconds)
             add_entry(buffer, cur_trade, trade_time, RQHS)
