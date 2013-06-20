@@ -102,6 +102,49 @@ def calc_RQHS(trade):
     return RQHS
 
 
+def add_midpoint(buffer):
+    """Calculate the midpoint (Q) and midpoint in 5 minutes (Q_5min) for each trade in the buffer
+    for both the National BBO and NASDAQ BBO and store the results in the original buffer. The 
+    Midpoint is calculated using the following:
+
+                Qt = (At + Bt) / 2
+    """ 
+    for i in xrange(0, len(buffer)):
+        # Set the 5 minute offset to the last value if within < 5 closing
+        if i >= (len(buffer) - 301):
+            offset = (len(buffer) - 1) - i
+        else:
+            offset = 300
+
+        # Calculate midpoint now for National BBO
+        A = float(buffer[i]['NBO'])
+        B = float(buffer[i]['NBB'])
+        Q = (A + B) / 2.0
+
+        # Calculate the midpoint in 5 minutes for National BBO
+        A = float(buffer[i + offset]['NBO'])
+        B = float(buffer[i + offset]['NBB'])
+        Q_5min = (A + B) / 2.0
+
+        # Set the national midpoint in the buffer
+        buffer[i]['NMID'] = round(Q, 6)
+        buffer[i]['NMID5'] = round(Q_5min, 6)
+
+        # Calculate midpoint now for NASDAQ BBO
+        A = float(buffer[i]['NQBO'])
+        B = float(buffer[i]['NQBB'])
+        Q = (A + B) / 2.0
+
+        # Calculate the midpoint in 5 minutes for NASDAQ BBO
+        A = float(buffer[i + offset]['NQBO'])
+        B = float(buffer[i + offset]['NQBB'])
+        Q_5min = (A + B) / 2.0
+
+        # Set the NASDAQ midpoint in the buffer
+        buffer[i]['NQMID'] = round(Q, 6)
+        buffer[i]['NQMID5'] = round(Q_5min, 6)
+
+
 def add_RPI5(buffer):
     """Calculates the relative price impact in 5 minutes (RPI5) for each trade
     in the buffer for both the National BBO and NASDAQ BBO and stores the
@@ -263,10 +306,10 @@ with open(taq_file, 'rb') as taq_csv:
         cur_trade = trade
         cur_trade_time = convert_mil(trade['time'])
 
-        # Calculate RPI5 and flush buffer to disk when it contains all time-weighted trades for one day
+        # Calculate midpoints and flush buffer to disk when it contains all time-weighted trades for one day
         if buffer.__len__() >= 23401:
-            # Calculate the RPI5 and add it to the buffer
-            add_RPI5(buffer)
+            # Calculate the midpoints and add it to the buffer
+            add_midpoint(buffer)
             write_buffer(buffer, output_file)
             # Clear the buffer in memory
             del buffer[:]
@@ -281,5 +324,5 @@ with open(taq_file, 'rb') as taq_csv:
 
 # Write any remaining content in the buffer to disk
 if buffer:
-    add_RPI5(buffer)
+    add_midpoint(buffer)
     write_buffer(buffer, output_file)
