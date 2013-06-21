@@ -1,3 +1,28 @@
+###############################################################################
+#
+# Performs analysis of the TAQ as well as time-weighted data to produce daily
+# summary statistics for each symbol, type, and whether it is a ShortSale.
+# These summary statistics are then aggregated to produce more general
+# descriptive statistics that describe all stocks based on criteria.
+# 
+# Copyright (C) 2013, Jonathan Gillett
+# All rights reserved.
+#
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+###############################################################################
 library(stringr)
 library(xts)
 library(data.table)
