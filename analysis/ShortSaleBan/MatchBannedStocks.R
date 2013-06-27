@@ -226,7 +226,7 @@ for (i in 1:N)
 for (entry in matched_hist[, list(symbol=unique(symbol))]$symbol)
 {
   # For each symbol use the match with the highest frequency out of all other symbols matched to that match
-  for (candidate in matched_hist["ABCB"][order(-frequency)]$match)
+  for (candidate in matched_hist[entry][order(-frequency)]$match)
   {
     # If the candidate symbol has a frequency equal to N then it was matched everytime
     if (matched_hist[J(entry,candidate)]$frequency == N)
@@ -241,9 +241,11 @@ for (entry in matched_hist[, list(symbol=unique(symbol))]$symbol)
       break
     }
     # If the candidate symbol has the highest frequency out of all other symbols also matched to it, it is the best match
-    else
+    # TODO ADD SUPPORT FOR HANDLING THE CASE WHEN TWO OR MORE SYMBOLS HAVE SAME FREQUENCY
+    if (matched_hist[match == candidate][order(-frequency), symbol][1] == entry)
     {
-      
+      final_match <- candidate
+      break
     }
   }
   
@@ -268,6 +270,47 @@ for (entry in matched_hist[, list(symbol=unique(symbol))]$symbol)
   {
     final_matched <- results
   }
+  
+  rm(final_match)
+  gc()
+}
+
+
+# Match any remaining stocks that have been unmatched, these are usually statistical outliers
+# from the matching process. However, if there are a relatively large number of stocks that 
+# are not matched try increasing N
+for (entry in final_matched[is.na(match), symbol])
+{
+  # For each unmatched symbol used the best match that hasn't already been matched
+  for (candidate in matched_hist[entry][order(-frequency)]$match)
+  {
+    if (NROW(final_matched[match == entry]) == 0)
+    {
+      final_match <- candidate
+      break
+    }
+  }
+  
+  if (exists("final_match"))
+  {
+    # Get the results for the final match for the current symbol
+    results <- matched_hist[J(entry,final_match)]
+  }
+  else
+  {
+    # There was no match at all, mark the entry as NA, and try and match it manually
+    # This should not happen, try increasing the size of N and re-running the script
+    results <- data.table(symbol=entry, match=NA, frequency=NA, sum_price=NA, sum_vol=NA, sum_mean=NA)
+  }
+  
+  # Update the unmatched entry to have a match
+  final_matched[symbol == entry, match := results[, match]]
+  final_matched[symbol == entry, frequency := results[, frequency]]
+  final_matched[symbol == entry, sum_price := results[, sum_price]]
+  final_matched[symbol == entry, sum_vol := results[, sum_vol]]
+  final_matched[symbol == entry, sum_mean := results[, sum_mean]]
+  rm(final_match)
+  gc()
 }
 
 
