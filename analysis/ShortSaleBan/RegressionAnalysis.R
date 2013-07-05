@@ -101,6 +101,35 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
 }
 
 
+# Create a table for regression analysis with RQS as dependent and daily volume as independent
+gen_RQS_table <- function(dataset)
+{
+  #RQS =  constant + hft_d_short + hft_s_short + nhft_d_short + nhft_s_short 
+  #       + hft_d_short * ssb + hft_s_short * ssb + nhft_d_short * ssb + nhft_s_short * ssb 
+  #       + ssb + epsilon
+  
+  
+  # The initial table of each date and symbol
+  results <- dataset[shortsale == TRUE, list(symbol=unique(symbol)), by=time]
+  setkey(results, time, symbol)
+  
+  # Set the volume for hft and non-hft that are shortsales
+  results <- merge(results, 
+                   dataset[type == "HFT_D" & shortsale == TRUE, list(hft_d_short=sum_vol), by="time,symbol"], all.x=TRUE)
+  results <- merge(results, 
+                   dataset[type == "HFT_S" & shortsale == TRUE, list(hft_s_short=sum_vol), by="time,symbol"], all.x=TRUE)
+  results <- merge(results, 
+                   dataset[type == "NHFT_D" & shortsale == TRUE, list(nhft_d_short=sum_vol), by="time,symbol"], all.x=TRUE)
+  results <- merge(results, 
+                   dataset[type == "NHFT_S" & shortsale == TRUE, list(nhft_s_short=sum_vol), by="time,symbol"], all.x=TRUE)
+  
+  # Set the RQS and ban dummy
+  results <- merge(results, 
+                   unique(dataset[shortsale == TRUE, list(NRQS,NQRQS, ban_dummy), by="time,symbol"]))
+
+  return(results)
+}
+
 
 # Create regression analysis datasets for the mean daily volume, and RQS
 dataset_original <- gen_dataset_orig(daily_results, time_weight_results, final_matched)
