@@ -101,14 +101,128 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
 }
 
 
+# Create a data table similar to what was used for the shackling shortsellers paper
+gen_shackling_table <- function(daily_data, time_weight_data, matches)
+{
+  # Get the list of banned symbols
+  ban_date <- as_date("2008-09-19")
+  exp_date <- as_date("2008-10-09")
+  banned <- matches[AddDate == ban_date, symbol]
+  
+  # For each banned symbol get the match and calculate the differences of the variables
+  for (ban_symbol in banned)
+  {
+    matched <- matches[ban_symbol]$match
+    
+    # The daily trading volume
+    daily_volume <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+                               list(ban_sum_vol=sum(sum_vol)), by="time,symbol"]
+    
+    daily_volume <- merge(daily_volume, 
+                          daily_data[symbol == matched & ShortSale == TRUE,
+                                     list(match_sum_vol=sum(sum_vol)), by="time"],
+                          by="time")
+    
+    
+    # Relative range
+    relative_range <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+                                 list(ban_rel_range=mean(rel_range)), by="time,symbol"]
+    
+    relative_range <- merge(relative_range, 
+                            daily_data[symbol == matched & ShortSale == TRUE,
+                                       list(match_rel_range=mean(rel_range)), by="time"],
+                            by="time")
+    
+    
+    # Calculate the daily weighted average price (WAP) by volume (VWAP)
+    # TODO this should be part of the daily aggregate results rather than having to derive it from rel_range
+    daily_VWAP <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+                             list(ban_vwap=(mean(rel_range) / (mean(max_price) - mean(min_price)))^-1), by="time,symbol"]
+    
+    daily_VWAP <- merge(daily_VWAP, 
+                        daily_data[symbol == matched & ShortSale == TRUE,
+                                   list(match_vwap=(mean(rel_range) / (mean(max_price) - mean(min_price)))^-1), by="time"],
+                        by="time")
+    
+    
+    # Calculate the dependent variable, RQS
+    daily_RQS <- time_weight_data[symbol == ban_symbol, 
+                                  list(NRQS_ban=(2 * mean_NRQHS), NQRQS_ban=(2 * mean_NQRQHS)), by="time"]
+    daily_RQS <- merge(daily_RQS,
+                       time_weight_data[symbol == matched, 
+                                        list(NRQS_match=(2 * mean_NRQHS), NQRQS_match=(2 * mean_NQRQHS)), by="time"])
+    
+    
+    # Calculate the dependent variable, RES
+    daily_RES <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+                            list(NRES_ban=mean(mean_NRES), NQRES_ban=mean(mean_NQRES)), by="time,symbol"]
+    
+    daily_RES <- merge(daily_RES, 
+                       daily_data[symbol == matched & ShortSale == TRUE,
+                                  list(NRES_match=mean(mean_NRES), NQRES_match=mean(mean_NQRES)), by="time"],
+                       by="time")
+    
+    
+    # Calculate the depndent variable, RPI5
+    daily_RPI5 <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+                             list(NRPI5_ban=mean(mean_NRPI5), NQRPI5_ban=mean(mean_NQRPI5)), by="time,symbol"]
+    
+    daily_RPI5 <- merge(daily_RPI5, 
+                        daily_data[symbol == matched & ShortSale == TRUE,
+                                   list(NRPI5_match=mean(mean_NRPI5), NQRPI5_match=mean(mean_NQRPI5)), by="time"],
+                        by="time")    
+      
+    
+    
+    # Calculate the difference for the current symbol, store results
+    result <- daily_volume[, list(sum_vol=(ban_sum_vol - match_sum_vol)), by="time,symbol"]
+    
+    result <- merge(result,
+                    relative_range[, list(rel_range=(ban_rel_range - match_rel_range)), by="time"],
+                    by="time")
+    
+    result <- merge(result,
+                    daily_VWAP[, list(vwap=(ban_vwap - match_vwap)), by="time"],
+                    by="time")
+    
+    result <- merge(result,
+                    daily_RQS[, list(NRQS=(NRQS_ban - NRQS_match), 
+                                     NQRQS=(NQRQS_ban - NQRQS_match)), by="time"],
+                    by="time")
+    
+    result <- merge(result,
+                    daily_RES[, list(NRES=(NRES_ban - NRES_match), 
+                                     NQRES=(NQRES_ban - NQRES_match)), by="time"],
+                    by="time")
+    
+    result <- merge(result,
+                    daily_RPI5[, list(NRPI5=(NRPI5_ban - NRPI5_match), 
+                                     NQRPI5=(NQRPI5_ban - NQRPI5_match)), by="time"],
+                    by="time")
+    
+    
+    if (exists("results"))
+    {
+      results <- rbind(results, result)
+    }
+    else
+    {
+      results <- result
+    }
+    setkey(results, time, symbol)
+  }
+  
+  # Mark all entries during the ban period with 1
+  results[, ban_dummy := 0]
+  results[time >= ban_date & time < exp_date, ban_dummy := 1]
+  
+  return(results)
+}
+
+
 # Create a table for regression analysis with RQS as dependent and daily volume as independent
 gen_RQS_table <- function(dataset)
-{
-  #RQS =  constant + hft_d_short + hft_s_short + nhft_d_short + nhft_s_short 
-  #       + hft_d_short * ssb + hft_s_short * ssb + nhft_d_short * ssb + nhft_s_short * ssb 
-  #       + ssb + epsilon
-  
-  
+{  
   # The initial table of each date and symbol
   results <- dataset[shortsale == TRUE, list(symbol=unique(symbol)), by=time]
   setkey(results, time, symbol)
@@ -125,7 +239,7 @@ gen_RQS_table <- function(dataset)
   
   # Set the RQS and ban dummy
   results <- merge(results, 
-                   unique(dataset[shortsale == TRUE, list(NRQS,NQRQS, ban_dummy), by="time,symbol"]))
+                   unique(dataset[shortsale == TRUE, list(NRQS, NQRQS, ssb=ban_dummy), by="time,symbol"]))
 
   return(results)
 }
@@ -136,8 +250,19 @@ dataset_original <- gen_dataset_orig(daily_results, time_weight_results, final_m
 
 
 # Perform regression analysis for the orginal banned stocks with RQS as the dependent variable
-NRQS_model=lm(NRQS~HFT_D_sum_vol+HFT_S_sum_vol+ban_dummy, dataset_original)
-NQRQS_model=lm(NQRQS~HFT_D_sum_vol+HFT_S_sum_vol+ban_dummy, dataset_original)
+# 
+# RQS = constant + hft_d_short + hft_s_short + nhft_d_short + nhft_s_short 
+#     + hft_d_short * ssb + hft_s_short * ssb + nhft_d_short * ssb + nhft_s_short * ssb 
+#     + ssb + epsilon
+#
+RQS_table <- gen_RQS_table(dataset_original)
+
+NRQS_model=lm(NRQS~hft_d_short + hft_s_short + nhft_d_short + nhft_s_short + hft_d_short * ssb 
+              + hft_s_short * ssb + nhft_d_short * ssb + nhft_s_short * ssb + ssb, RQS_table)
+
+NQRQS_model=lm(NQRQS~hft_d_short + hft_s_short + nhft_d_short + nhft_s_short + hft_d_short * ssb 
+              + hft_s_short * ssb + nhft_d_short * ssb + nhft_s_short * ssb + ssb, RQS_table)
+
 
 # NRQS Regression Analysis for Original Banned Stocks
 summary(NRQS_model)
