@@ -94,8 +94,8 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
   }
   
   # Mark all entries during the ban period with 1
-  results[, ban_dummy := 0]
-  results[time >= ban_date & time < exp_date, ban_dummy := 1]
+  results[, ssb := 0]
+  results[time >= ban_date & time < exp_date, ssb := 1]
   
   return(results)
 }
@@ -213,8 +213,8 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
   }
   
   # Mark all entries during the ban period with 1
-  results[, ban_dummy := 0]
-  results[time >= ban_date & time < exp_date, ban_dummy := 1]
+  results[, ssb := 0]
+  results[time >= ban_date & time < exp_date, ssb := 1]
   
   return(results)
 }
@@ -239,10 +239,43 @@ gen_RQS_table <- function(dataset)
   
   # Set the RQS and ban dummy
   results <- merge(results, 
-                   unique(dataset[shortsale == TRUE, list(NRQS, NQRQS, ssb=ban_dummy), by="time,symbol"]))
+                   unique(dataset[shortsale == TRUE, list(NRQS, NQRQS, ssb), by="time,symbol"]))
 
   return(results)
 }
+
+
+
+# Start by performing regression analysis similar to the shackling shortsellers paper
+# for RQS, RES, RPI5, and RVOL as the dependent variables
+#
+# DEPENDENT = ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
+#
+shackling_table <- gen_shackling_table(daily_results, time_weight_results, final_matched)
+
+# Regression analysis with RQS as dependent
+NRQS_model=lm(formula = NRQS ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+NQRQS_model=lm(formula = NQRQS ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+
+summary(NRQS_model)
+summary(NQRQS_model)
+
+
+# Regression analysis with RES
+NRES_model=lm(formula = NRES ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+NQRES_model=lm(formula = NQRES ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+
+summary(NRQS_model)
+summary(NQRQS_model)
+
+
+# Regression analysis with RPI5
+NRPI5_model=lm(formula = NRPI5 ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+NQRPI5_model=lm(formula = NQRPI5 ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+
+summary(NRQS_model)
+summary(NQRQS_model)
+
 
 
 # Create regression analysis datasets for the mean daily volume, and RQS
