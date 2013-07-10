@@ -115,32 +115,32 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     matched <- matches[ban_symbol]$match
     
     # The daily trading volume
-    daily_volume <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+    daily_volume <- daily_data[symbol == ban_symbol,
                                list(ban_sum_vol=sum(sum_vol)), by="time,symbol"]
     
     daily_volume <- merge(daily_volume, 
-                          daily_data[symbol == matched & ShortSale == TRUE,
+                          daily_data[symbol == matched,
                                      list(match_sum_vol=sum(sum_vol)), by="time"],
                           by="time")
     
     
     # Relative range
-    relative_range <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+    relative_range <- daily_data[symbol == ban_symbol,
                                  list(ban_rel_range=mean(rel_range)), by="time,symbol"]
     
     relative_range <- merge(relative_range, 
-                            daily_data[symbol == matched & ShortSale == TRUE,
+                            daily_data[symbol == matched,
                                        list(match_rel_range=mean(rel_range)), by="time"],
                             by="time")
     
     
     # Calculate the daily weighted average price (WAP) by volume (VWAP)
     # TODO this should be part of the daily aggregate results rather than having to derive it from rel_range
-    daily_VWAP <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+    daily_VWAP <- daily_data[symbol == ban_symbol,
                              list(ban_vwap=(mean(rel_range) / (mean(max_price) - mean(min_price)))^-1), by="time,symbol"]
     
     daily_VWAP <- merge(daily_VWAP, 
-                        daily_data[symbol == matched & ShortSale == TRUE,
+                        daily_data[symbol == matched,
                                    list(match_vwap=(mean(rel_range) / (mean(max_price) - mean(min_price)))^-1), by="time"],
                         by="time")
     
@@ -154,21 +154,21 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     
     
     # Calculate the dependent variable, RES
-    daily_RES <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+    daily_RES <- daily_data[symbol == ban_symbol,
                             list(NRES_ban=mean(mean_NRES), NQRES_ban=mean(mean_NQRES)), by="time,symbol"]
     
     daily_RES <- merge(daily_RES, 
-                       daily_data[symbol == matched & ShortSale == TRUE,
+                       daily_data[symbol == matched,
                                   list(NRES_match=mean(mean_NRES), NQRES_match=mean(mean_NQRES)), by="time"],
                        by="time")
     
     
     # Calculate the depndent variable, RPI5
-    daily_RPI5 <- daily_data[symbol == ban_symbol & ShortSale == TRUE,
+    daily_RPI5 <- daily_data[symbol == ban_symbol,
                              list(NRPI5_ban=mean(mean_NRPI5), NQRPI5_ban=mean(mean_NQRPI5)), by="time,symbol"]
     
     daily_RPI5 <- merge(daily_RPI5, 
-                        daily_data[symbol == matched & ShortSale == TRUE,
+                        daily_data[symbol == matched,
                                    list(NRPI5_match=mean(mean_NRPI5), NQRPI5_match=mean(mean_NQRPI5)), by="time"],
                         by="time")    
       
@@ -265,16 +265,28 @@ summary(NQRQS_model)
 NRES_model=lm(formula = NRES ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
 NQRES_model=lm(formula = NQRES ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
 
-summary(NRQS_model)
-summary(NQRQS_model)
+summary(NRES_model)
+summary(NQRES_model)
 
 
 # Regression analysis with RPI5
 NRPI5_model=lm(formula = NRPI5 ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
 NQRPI5_model=lm(formula = NQRPI5 ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
 
-summary(NRQS_model)
-summary(NQRQS_model)
+summary(NRPI5_model)
+summary(NQRPI5_model)
+
+
+# Regression analysis with relative range as the dependent, removed from equation as independent
+# rel_range = ssb + factor(symbol) + market_cap + sum_vol + vwap
+rel_range_model=lm(formula = rel_range ~ ssb + factor(symbol) + sum_vol + vwap, data = shackling_table)
+
+summary(rel_range_model)
+
+
+
+
+
 
 
 
