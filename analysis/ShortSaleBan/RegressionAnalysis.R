@@ -134,6 +134,16 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
                             by="time")
     
     
+    # Market cap
+    market_cap <- daily_data[symbol == ban_symbol,
+                             list(ban_market_cap=mean(market_cap)), by="time,symbol"]
+    
+    market_cap <- merge(market_cap, 
+                        daily_data[symbol == matched,
+                                   list(match_market_cap=mean(market_cap)), by="time"],
+                            by="time")
+    
+    
     # Calculate the daily weighted average price (WAP) by volume (VWAP)
     # TODO this should be part of the daily aggregate results rather than having to derive it from rel_range
     daily_VWAP <- daily_data[symbol == ban_symbol,
@@ -179,6 +189,10 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     
     result <- merge(result,
                     relative_range[, list(rel_range=(ban_rel_range - match_rel_range)), by="time"],
+                    by="time")
+
+    result <- merge(result,
+                    market_cap[, list(market_cap=(ban_market_cap - match_market_cap)), by="time"],
                     by="time")
     
     result <- merge(result,
@@ -254,24 +268,24 @@ gen_RQS_table <- function(dataset)
 shackling_table <- gen_shackling_table(daily_results, time_weight_results, final_matched)
 
 # Regression analysis with RQS as dependent
-NRQS_model=lm(formula = NRQS ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
-NQRQS_model=lm(formula = NQRQS ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+NRQS_model=lm(formula = NRQS ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
+NQRQS_model=lm(formula = NQRQS ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
 
 summary(NRQS_model)
 summary(NQRQS_model)
 
 
 # Regression analysis with RES
-NRES_model=lm(formula = NRES ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
-NQRES_model=lm(formula = NQRES ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+NRES_model=lm(formula = NRES ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
+NQRES_model=lm(formula = NQRES ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
 
 summary(NRES_model)
 summary(NQRES_model)
 
 
 # Regression analysis with RPI5
-NRPI5_model=lm(formula = NRPI5 ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
-NQRPI5_model=lm(formula = NQRPI5 ~ ssb + factor(symbol) + sum_vol + rel_range + vwap, data = shackling_table)
+NRPI5_model=lm(formula = NRPI5 ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
+NQRPI5_model=lm(formula = NQRPI5 ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
 
 summary(NRPI5_model)
 summary(NQRPI5_model)
@@ -279,7 +293,7 @@ summary(NQRPI5_model)
 
 # Regression analysis with relative range as the dependent, removed from equation as independent
 # rel_range = ssb + factor(symbol) + market_cap + sum_vol + vwap
-rel_range_model=lm(formula = rel_range ~ ssb + factor(symbol) + sum_vol + vwap, data = shackling_table)
+rel_range_model=lm(formula = rel_range ~ ssb + factor(symbol) + market_cap + sum_vol + vwap, data = shackling_table)
 
 summary(rel_range_model)
 
