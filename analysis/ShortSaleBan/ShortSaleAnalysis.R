@@ -114,6 +114,9 @@ taq_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/test_taq/"
 # Directory containing the time weighted files
 time_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/test_time/"
 
+# File containing the market capitalization data
+market_cap_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/market_cap.csv"
+
 # File to write the summary statistics for daily results to as CSV
 daily_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/daily_results_test.csv"
 
@@ -262,6 +265,51 @@ for (file in filenames)
   rm(time_weighted, results)
   gc()
 }
+
+
+
+# Calculate the market capitalization for each stock and add it to the daily results
+market_cap <- fread(market_cap_file)
+
+# Convert the date entry
+market_cap[, time := as.POSIXct(strptime(time, "%Y%m%d"))]
+market_cap[, symbol := as.factor(symbol)]
+
+# Clean the data read from CSV, remove unncessary columns, date, shorttype and linkindicator
+market_cap[, permno := NULL]
+
+# Ignore any erroneous entries missing symbols, prc, or shrout
+market_cap <- market_cap[symbol != "" | !is.na(prc) | !is.na(market_cap)]
+
+# Calculate market cap for each stock
+market_cap[, market_cap := prc * shrout]
+setkey(market_cap, time, symbol)
+
+# Get the market for each day for each symbol
+for (entry in daily_results[, unique(symbol)])
+{
+  dates <- daily_results[symbol == entry, unique(time)]
+  
+  if (exists("results"))
+  {
+    results <- rbind(results, 
+                     market_cap[symbol == entry & time %in% dates, list(market_cap), by="time,symbol"])
+  }
+  else
+  {
+    results <- market_cap[symbol == entry & time %in% dates, list(market_cap), by="time,symbol"]
+  }
+}
+
+# NOTE any symbols not in the market results will be removed from daily_results after merge!!!
+setkey(results, time, symbol)
+daily_results <- merge(daily_results, 
+                       results[, list(market_cap), by="time,symbol"])
+
+# Free up memory
+rm(market_cap, results)
+gc()
+
 
 # Write the results to CSV file
 write.csv(daily_results, daily_results_file, row.names = FALSE)
