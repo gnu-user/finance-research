@@ -106,29 +106,32 @@ ban_list <- data.table(ban_list)
 setkey(ban_list, Ticker, Exchange)
 
 
-# Add columns to final results for identifying which stocks were banned, and the start and end period
-final_results[, banned := FALSE]
+# Add columns to daily results for identifying which stocks were banned, and the start and end period
+daily_results[, banned := FALSE]
 
 # Mark each banned stock as TRUE, with the add and expiry date
+setkey(daily_results, symbol)
 for (ticker in ban_list$Ticker)
 {
-  final_results[ticker, banned := TRUE]
-  final_results[ticker, AddDate := ban_list[Ticker == ticker, AddDate]]
-  final_results[ticker, ExpDate := ban_list[Ticker == ticker, ExpDate]]
+  daily_results[ticker, banned := TRUE]
+  daily_results[ticker, AddDate := ban_list[Ticker == ticker, AddDate]]
+  daily_results[ticker, ExpDate := ban_list[Ticker == ticker, ExpDate]]
 }
 
 # Update the key indexes to include banned
-setkey(final_results, time, symbol, buysell, type, ShortSale, banned)
+setkey(daily_results, time, symbol, type, ShortSale, banned)
 
 
-# Create a new data table containing the mean price and volume for each symbol for all types
-symbol_means <- final_results[,list(matched=FALSE, mean_price=mean(mean_price), mean_vol=mean(mean_vol)), by="time,symbol,banned,AddDate"]
-setkey(symbol_means,time,banned,matched,symbol)
+# Create a new data table containing the data that symbols will be matched on:
+# The mean price, mean volume, and market cap for each symbol for all types
+symbol_match_data <- daily_results[, list(matched=FALSE, mean_price=mean(mean_price), mean_vol=mean(mean_vol), market_cap=mean(market_cap)), 
+                                   by="time,symbol,banned,AddDate"]
+setkey(symbol_match_data,time,banned,matched,symbol)
 
 # Get the list of banned symbols
-banned <- symbol_means[banned == TRUE, list(symbol=unique(symbol))]$symbol
+banned <- symbol_match_data[banned == TRUE, list(symbol=unique(symbol))]$symbol
 
-# Set N, the number or random permutations of the banned symbols list to generate, currently 2 * number banned symbols
+# Set N, the number or random permutations of the banned symbols list to generate, recommended 2 * number banned symbols
 #N <- 2 * NROW(banned)
 N <- 150
 
@@ -137,47 +140,50 @@ for (i in 1:N)
 {
   permutation <- sample(banned)
 
-  # Find a matching un-banned stock based on pre-ban price and volume for each symbol of the permutation
+  # Find a matching un-banned stock based on pre-ban price, volume, and market cap for each symbol of the permutation
   for (ban_symbol in permutation)
   {
     # The date the symbol was first listed
-    start_date <- symbol_means[symbol == ban_symbol, time][1]
+    start_date <- symbol_match_data[symbol == ban_symbol, time][1]
     
     # The date the symbol was banned
-    ban_date <- symbol_means[symbol == ban_symbol, AddDate][1]
+    ban_date <- symbol_match_data[symbol == ban_symbol, AddDate][1]
     
     # The number of days the symbol was banned (based on the days it was listed)
-    days_banned <- NROW(symbol_means[symbol == ban_symbol & time >= start_date & time < ban_date])
+    days_banned <- NROW(symbol_match_data[symbol == ban_symbol & time >= start_date & time < ban_date])
     
     # Get the list of dates the symbol was listed as banned
-    dates <- symbol_means[symbol == ban_symbol & time >= start_date & time < ban_date, time]  
+    dates <- symbol_match_data[symbol == ban_symbol & time >= start_date & time < ban_date, time]  
     
     # Get a list of candidate stocks which occurr at the same time
-    temp <- symbol_means[J(dates,FALSE,FALSE),list(n=NROW(time)), nomatch=0, by="symbol"]
+    temp <- symbol_match_data[J(dates,FALSE,FALSE),list(n=NROW(time)), nomatch=0, by="symbol"]
     setkey(temp, symbol, n)
     candidates <- temp[n == days_banned]$symbol
 
     # Store the candidates in the data table that will contain the differences
-    total_differences <- symbol_means[time %in% dates & symbol %in% candidates, list(time, symbol, mean_price, mean_vol)]
+    total_differences <- symbol_match_data[time %in% dates & symbol %in% candidates, list(time, symbol, mean_price, mean_vol, market_cap)]
     setkey(total_differences,symbol)
     
-    # Get a vector of the mean price and volume for the banned symbol for each day
-    ban_prices <- symbol_means[J(dates,TRUE,FALSE,ban_symbol)]$mean_price  
-    ban_vols <- symbol_means[J(dates,TRUE,FALSE,ban_symbol)]$mean_vol
+    # Get a vector of the mean price and volume and market cap for the banned symbol for each day
+    ban_prices <- symbol_match_data[J(dates,TRUE,FALSE,ban_symbol)]$mean_price  
+    ban_vols <- symbol_match_data[J(dates,TRUE,FALSE,ban_symbol)]$mean_vol
+    ban_caps <- symbol_match_data[J(dates,TRUE,FALSE,ban_symbol)]$market_cap
     
     # Calculate the differences between the banned stock and each candidate stock
     total_differences[, num_price := (mean_price - ban_prices), by="symbol"]
     total_differences[, per_price := Delt(ban_prices, mean_price, type='arithmetic'), by="symbol"]
     total_differences[, num_vol := (mean_vol - ban_vols), by="symbol"]
     total_differences[, per_vol := Delt(ban_vols, mean_vol, type='arithmetic'), by="symbol"]
+    total_differences[, num_cap := (market_cap - ban_caps), by="symbol"]
+    total_differences[, per_cap := Delt(ban_caps, market_cap, type='arithmetic'), by="symbol"]
     
     # Calculate the sum of absolute % differences
-    sum_differences <- total_differences[, list(sum_price=sum(abs(per_price)), sum_vol=sum(abs(per_vol))), by="symbol"]
+    sum_differences <- total_differences[, list(sum_price=sum(abs(per_price)), sum_vol=sum(abs(per_vol)), sum_cap=sum(abs(per_cap))), by="symbol"]
     
-    # Calculate the mean of the % price and volume sums
+    # Calculate the mean of the % price, volume, and market cap sums
     sum_differences[, sum_mean := rowMeans(.SD), by="symbol"]
     
-    # The best match is the symbol with the lowest average min price and volume
+    # The best match is the symbol with the lowest average min price, volume, and market cap
     setkey(sum_differences, sum_mean)
     best_match <- sum_differences[1,symbol]
     
@@ -186,6 +192,7 @@ for (i in 1:N)
                           frequency = 1, 
                           sum_price = sum_differences[1,sum_price],
                           sum_vol = sum_differences[1,sum_vol],
+                          sum_cap = sum_differences[1,sum_cap],
                           sum_mean = sum_differences[1,sum_mean])
     
     # Add the results to the matched symbol histogram, update the frequency of the match
@@ -207,8 +214,8 @@ for (i in 1:N)
     }
     
     # Mark the best matched symbol used as matched
-    symbol_means[symbol == best_match, matched := TRUE]
-    setkey(symbol_means,time,banned,matched,symbol)
+    symbol_match_data[symbol == best_match, matched := TRUE]
+    setkey(symbol_match_data,time,banned,matched,symbol)
     setkey(matched_hist, symbol, match)
     
     # Clean up temporary data.tables
@@ -216,8 +223,8 @@ for (i in 1:N)
   }
     
   # Reset the list of matched symbols for the next permutation of the banned symbols
-  symbol_means[,matched := FALSE]
-  setkey(symbol_means,time,banned,matched,symbol)
+  symbol_match_data[,matched := FALSE]
+  setkey(symbol_match_data,time,banned,matched,symbol)
 }
 
 
@@ -258,7 +265,7 @@ for (entry in matched_hist[, list(symbol=unique(symbol))]$symbol)
   {
     # There was no match at all, mark the entry as NA, and try and match it manually
     # This should not happen, try increasing the size of N and re-running the script
-    results <- data.table(symbol=entry, match=NA, frequency=NA, sum_price=NA, sum_vol=NA, sum_mean=NA)
+    results <- data.table(symbol=entry, match=NA, frequency=NA, sum_price=NA, sum_vol=NA, sum_cap=NA, sum_mean=NA)
   }
   
   # Add the final matched results to list of all matched symbols
@@ -278,7 +285,7 @@ for (entry in matched_hist[, list(symbol=unique(symbol))]$symbol)
 
 # Match any remaining stocks that have been unmatched, these are usually statistical outliers
 # from the matching process. However, if there are a relatively large number of stocks that 
-# are not matched try increasing N
+# are not matched try increasing N (number of permutations)
 for (entry in final_matched[is.na(match), symbol])
 {
   # For each unmatched symbol used the best match that hasn't already been matched
@@ -300,7 +307,7 @@ for (entry in final_matched[is.na(match), symbol])
   {
     # There was no match at all, mark the entry as NA, and try and match it manually
     # This should not happen, try increasing the size of N and re-running the script
-    results <- data.table(symbol=entry, match=NA, frequency=NA, sum_price=NA, sum_vol=NA, sum_mean=NA)
+    results <- data.table(symbol=entry, match=NA, frequency=NA, sum_price=NA, sum_vol=NA, sum_cap=NA, sum_mean=NA)
   }
   
   # Update the unmatched entry to have a match
@@ -308,9 +315,20 @@ for (entry in final_matched[is.na(match), symbol])
   final_matched[symbol == entry, frequency := results[, frequency]]
   final_matched[symbol == entry, sum_price := results[, sum_price]]
   final_matched[symbol == entry, sum_vol := results[, sum_vol]]
+  final_matched[symbol == entry, sum_cap := results[, sum_cap]]
   final_matched[symbol == entry, sum_mean := results[, sum_mean]]
   rm(final_match)
   gc()
+}
+
+setkey(final_matched, symbol, match)
+
+# Add the AddDate and ExpDate
+# TODO: this should be done prior
+for (ticker in ban_list$Ticker)
+{
+  final_matched[ticker, AddDate := ban_list[Ticker == ticker, AddDate]]
+  final_matched[ticker, ExpDate := ban_list[Ticker == ticker, ExpDate]]
 }
 
 
