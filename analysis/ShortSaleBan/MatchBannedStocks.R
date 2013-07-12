@@ -265,7 +265,7 @@ for (entry in matched_hist[, list(symbol=unique(symbol))]$symbol)
   {
     # There was no match at all, mark the entry as NA, and try and match it manually
     # This should not happen, try increasing the size of N and re-running the script
-    results <- data.table(symbol=entry, match=NA, frequency=NA, sum_price=NA, sum_vol=NA, sum_cap=NA, sum_mean=NA)
+    results <- data.table(symbol=entry, match=factor(NA), frequency=0.0, sum_price=0.0, sum_vol=0.0, sum_cap=0.0, sum_mean=0.0)
   }
   
   # Add the final matched results to list of all matched symbols
@@ -283,6 +283,8 @@ for (entry in matched_hist[, list(symbol=unique(symbol))]$symbol)
 }
 
 
+
+
 # Match any remaining stocks that have been unmatched, these are usually statistical outliers
 # from the matching process. However, if there are a relatively large number of stocks that 
 # are not matched try increasing N (number of permutations)
@@ -291,7 +293,7 @@ for (entry in final_matched[is.na(match), symbol])
   # For each unmatched symbol used the best match that hasn't already been matched
   for (candidate in matched_hist[entry][order(-frequency)]$match)
   {
-    if (NROW(final_matched[match == entry]) == 0)
+    if (NROW(final_matched[match == candidate]) == 0)
     {
       final_match <- candidate
       break
@@ -307,7 +309,7 @@ for (entry in final_matched[is.na(match), symbol])
   {
     # There was no match at all, mark the entry as NA, and try and match it manually
     # This should not happen, try increasing the size of N and re-running the script
-    results <- data.table(symbol=entry, match=NA, frequency=NA, sum_price=NA, sum_vol=NA, sum_cap=NA, sum_mean=NA)
+    results <- data.table(symbol=entry, match=factor(NA), frequency=0.0, sum_price=0.0, sum_vol=0.0, sum_cap=0.0, sum_mean=0.0)
   }
   
   # Update the unmatched entry to have a match
