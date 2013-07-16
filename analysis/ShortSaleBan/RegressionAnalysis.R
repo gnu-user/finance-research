@@ -26,7 +26,7 @@ library(xts)
 library(data.table)
 
 # Create a dataset from the aggregate daily and time-weighted data to perform regression 
-# analysis on for stocks added to the original banlist. 
+# analysis on stocks added to the original banlist. 
 # Daily_data, is the daily summary statistics, time_weight_data, which contains the time-weighted 
 # RQS data and matches which contains the matches.
 gen_dataset_orig <- function(daily_data, time_weight_data, matches)
@@ -238,22 +238,30 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
 gen_RQS_table <- function(dataset)
 {  
   # The initial table of each date and symbol
-  results <- dataset[shortsale == TRUE, list(symbol=unique(symbol)), by=time]
+  results <- dataset[, list(symbol=unique(symbol)), by=time]
   setkey(results, time, symbol)
   
-  # Set the volume for hft and non-hft that are shortsales
+  # Set the volume for hft and non-hft, shortsale and non-shortsale data
+  results <- merge(results, 
+                   dataset[type == "HFT_D" & shortsale == FALSE, list(hft_d=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
                    dataset[type == "HFT_D" & shortsale == TRUE, list(hft_d_short=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
+                   dataset[type == "HFT_S" & shortsale == FALSE, list(hft_s=sum_vol), by="time,symbol"], all.x=TRUE)
+  results <- merge(results, 
                    dataset[type == "HFT_S" & shortsale == TRUE, list(hft_s_short=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
+                   dataset[type == "NHFT_D" & shortsale == FALSE, list(nhft_d=sum_vol), by="time,symbol"], all.x=TRUE)
+  results <- merge(results, 
                    dataset[type == "NHFT_D" & shortsale == TRUE, list(nhft_d_short=sum_vol), by="time,symbol"], all.x=TRUE)
+  results <- merge(results, 
+                   dataset[type == "NHFT_S" & shortsale == FALSE, list(nhft_s=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
                    dataset[type == "NHFT_S" & shortsale == TRUE, list(nhft_s_short=sum_vol), by="time,symbol"], all.x=TRUE)
   
   # Set the RQS and ban dummy
   results <- merge(results, 
-                   unique(dataset[shortsale == TRUE, list(NRQS, NQRQS, ssb), by="time,symbol"]))
+                   unique(dataset[, list(NRQS, NQRQS, ssb), by="time,symbol"]))
 
   return(results)
 }
@@ -310,21 +318,23 @@ dataset_original <- gen_dataset_orig(daily_results, time_weight_results, final_m
 
 # Perform regression analysis for the orginal banned stocks with RQS as the dependent variable
 # 
-# RQS = constant + hft_d_short + hft_s_short + nhft_d_short + nhft_s_short 
-#     + hft_d_short * ssb + hft_s_short * ssb + nhft_d_short * ssb + nhft_s_short * ssb 
-#     + ssb + epsilon
+# RQS = constant + hft_d + hft_d_short + hft_s + hft_s_short + nhft_d + nhft_d_short + nhft_s + nhft_s_short 
+#     + hft_d * ssb + hft_d_short * ssb + hft_s * ssb + hft_s_short * ssb + nhft_d * ssb + nhft_d_short * ssb 
+#     + nhft_s * ssb + nhft_s_short * ssb + ssb + epsilon
 #
 RQS_table <- gen_RQS_table(dataset_original)
 
-NRQS_model=lm(NRQS~hft_d_short + hft_s_short + nhft_d_short + nhft_s_short + hft_d_short * ssb 
-              + hft_s_short * ssb + nhft_d_short * ssb + nhft_s_short * ssb + ssb, RQS_table)
+NRQS_model=lm(NRQS~hft_d + hft_d_short + hft_s + hft_s_short + nhft_d + nhft_d_short + nhft_s + nhft_s_short 
+              + hft_d * ssb + hft_d_short * ssb + hft_s * ssb + hft_s_short * ssb + nhft_d * ssb 
+              + nhft_d_short * ssb + nhft_s * ssb + nhft_s_short * ssb + ssb, RQS_table)
 
-NQRQS_model=lm(NQRQS~hft_d_short + hft_s_short + nhft_d_short + nhft_s_short + hft_d_short * ssb 
-              + hft_s_short * ssb + nhft_d_short * ssb + nhft_s_short * ssb + ssb, RQS_table)
+NQRQS_model=lm(NQRQS~hft_d + hft_d_short + hft_s + hft_s_short + nhft_d + nhft_d_short + nhft_s + nhft_s_short 
+               + hft_d * ssb + hft_d_short * ssb + hft_s * ssb + hft_s_short * ssb + nhft_d * ssb 
+               + nhft_d_short * ssb + nhft_s * ssb + nhft_s_short * ssb + ssb, RQS_table)
 
 
 # NRQS Regression Analysis for Original Banned Stocks
 summary(NRQS_model)
 
-#NQRQS Regression Analysis for Oringal Banned Stocks")
+#NQRQS Regression Analysis for Original Banned Stocks")
 summary(NQRQS_model)
