@@ -352,7 +352,7 @@ gen_HFT_table <- function(dataset)
 perform_regression <- function(dataset, formula, rvol_formula, directory)
 {
   # Create the directory for storing the results if it does not already exist
-  dir.create(directory, showWarnings = FALSE)
+  dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   
   
   # Regression analysis with RQS as dependent
@@ -458,7 +458,7 @@ setkey(regression_table, time, symbol)
 # Combine the regression table and the HFT table
 regression_table <- merge(regression_table,
                           HFT_table[, 
-                                   list(hft_d, hft_d_short, hft_s, hft_s_short, nhft_d, nhft_d_short, nhft_s, nhft_s_short), 
+                                   list(hft_d, hft_s, hft_a, hft_d_short, hft_s_short, hft_a_short, nhft_d, nhft_s, nhft_a, nhft_d_short, nhft_s_short, nhft_a_short), 
                                    by="time,symbol"])
 
 
@@ -479,4 +479,37 @@ eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap +
 hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
 nhft_d * ssb + nhft_s + nhft_s * ssb"
 
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "shackling"), sep="/")
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "shackling", sep="/"))
+
+
+
+
+# Perform several regressions, using only one HFT type in the formula at a time
+# HFT_D only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_d + hft_d * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_d + hft_d * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_D", sep="/"))
+
+
+# HFT_S only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_s + hft_s * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_s + hft_s * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_S", sep="/"))
+
+
+# HFT_A only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_a + hft_a * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_a + hft_a * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A", sep="/"))
