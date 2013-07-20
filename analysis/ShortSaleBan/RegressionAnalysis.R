@@ -25,6 +25,19 @@ library(stringr)
 library(xts)
 library(data.table)
 
+# Wrapper for the built-in lm() method to display the actual formula used in the
+# case where the formula passed to lm() is represented as a string in a variable
+lm <- function(...)
+{
+  mf <- match.call()
+  mf[[1]] <- quote(lm)
+  env <- parent.frame()
+  mf$formula <- eval(mf$formula, env)
+  eval(mf, env)
+}
+
+
+
 # Create a dataset from the aggregate daily and time-weighted data to perform regression 
 # analysis on stocks added to the original banlist. 
 # Daily_data, is the daily summary statistics, time_weight_data, which contains the time-weighted 
