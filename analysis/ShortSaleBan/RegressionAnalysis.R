@@ -30,12 +30,11 @@ library(data.table)
 lm <- function(...)
 {
   mf <- match.call()
-  mf[[1]] <- quote(lm)
+  mf[[1]] <- quote(stats::lm)
   env <- parent.frame()
   mf$formula <- eval(mf$formula, env)
   eval(mf, env)
 }
-
 
 
 # Create a dataset from the aggregate daily and time-weighted data to perform regression 
@@ -319,7 +318,72 @@ gen_RQS_table <- function(dataset)
 
 
 
+# Performs regression analysis similar to the shackling shortsellers paper
+# for RQS, RES, RPI5, and RVOL as the dependent variables given the formula
+# for the indepedent variables and the dataset provided. The results of the 
+# regression are saved to text files in the directory provided.
+shackling_regression <- function(dataset, formula, rvol_formula, directory)
+{
+  # Regression analysis with RQS as dependent
+  NRQS_model=lm(formula = as.formula(paste("NRQS", formula, sep=" ~ ")), 
+                data = dataset)
+  
+  NQRQS_model=lm(formula = as.formula(paste("NQRQS", formula, sep=" ~ ")), 
+                 data = dataset)
+  
+  # Save the regression results
+  write("NATIONAL RQS REGRESSION\n==================================================", 
+         file = paste(directory, "RQS_Regression.txt", sep="/"))
+  capture.output(summary(NRQS_model), file = paste(directory, "RQS_Regression.txt", sep="/"), append = TRUE)
+  write("\n\n\n\n\n\n\nNASDAQ RQS REGRESSION\n==================================================", 
+        file = paste(directory, "RQS_Regression.txt", sep="/"), append = TRUE)
+  capture.output(summary(NQRQS_model), file = paste(directory, "RQS_Regression.txt", sep="/"), append = TRUE)
+  
+  
+  # Regression analysis with RES as dependent
+  NRES_model=lm(formula = as.formula(paste("NRES", formula, sep=" ~ ")), 
+                data = dataset)
+  
+  NQRES_model=lm(formula = as.formula(paste("NQRES", formula, sep=" ~ ")), 
+                 data = dataset)
+  
+  # Save the regression results
+  write("NATIONAL RES REGRESSION\n==================================================", 
+        file = paste(directory, "RES_Regression.txt", sep="/"))
+  capture.output(summary(NRES_model), file = paste(directory, "RES_Regression.txt", sep="/"), append = TRUE)
+  write("\n\n\n\n\n\n\nNASDAQ RES REGRESSION\n==================================================", 
+        file = paste(directory, "RES_Regression.txt", sep="/"), append = TRUE)
+  capture.output(summary(NQRES_model), file = paste(directory, "RES_Regression.txt", sep="/"), append = TRUE)
+  
+  
+  # Regression analysis with RPI5 as dependent
+  NRPI5_model=lm(formula = as.formula(paste("NRPI5", formula, sep=" ~ ")), 
+                data = dataset)
+  
+  NQRPI5_model=lm(formula = as.formula(paste("NQRPI5", formula, sep=" ~ ")), 
+                 data = dataset)
+  
+  # Save the regression results
+  write("NATIONAL RPI5 REGRESSION\n==================================================", 
+        file = paste(directory, "RPI5_Regression.txt", sep="/"))
+  capture.output(summary(NRPI5_model), file = paste(directory, "RPI5_Regression.txt", sep="/"), append = TRUE)
+  write("\n\n\n\n\n\n\nNASDAQ RPI5 REGRESSION\n==================================================", 
+        file = paste(directory, "RPI5_Regression.txt", sep="/"), append = TRUE)
+  capture.output(summary(NQRPI5_model), file = paste(directory, "RPI5_Regression.txt", sep="/"), append = TRUE)
+  
+  
+  # Regression analysis with RVOL as dependent
+  RVOL_model=lm(formula = as.formula(paste("rel_range", rvol_formula, sep=" ~ ")), 
+                 data = dataset)
+  
+  # Save the regression results
+  write("RVOL (RELATIVE RANGE) REGRESSION\n==================================================", 
+        file = paste(directory, "RVOL_Regression.txt", sep="/"))
+  capture.output(summary(RVOL_model), file = paste(directory, "RVOL_Regression.txt", sep="/"), append = TRUE)
+}
 
+
+  
 # Create regression analysis datasets for the mean daily volume, and RQS
 dataset_original <- gen_dataset_orig(daily_results, time_weight_results, final_matched)
 
@@ -367,67 +431,5 @@ shackling_table <- merge(shackling_table,
                          RQS_table[, 
                                    list(hft_d, hft_d_short, hft_s, hft_s_short, nhft_d, nhft_d_short, nhft_s, nhft_s_short), 
                                    by="time,symbol"])
-
-
-# Regression analysis with RQS as dependent
-NRQS_model=lm(formula = NRQS ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap 
-                        + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-                        + nhft_s + nhft_s * ssb, 
-              data = shackling_table)
-
-NQRQS_model=lm(formula = NQRQS ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
-                         + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-                         + nhft_s + nhft_s * ssb, 
-               data = shackling_table)
-
-summary(NRQS_model)
-summary(NQRQS_model)
-
-
-# Regression analysis with RES
-NRES_model=lm(formula = NRES ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
-                        + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-                        + nhft_s + nhft_s * ssb, 
-              data = shackling_table)
-
-NQRES_model=lm(formula = NQRES ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
-                         + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-                         + nhft_s + nhft_s * ssb, 
-               data = shackling_table)
-
-summary(NRES_model)
-summary(NQRES_model)
-
-
-# Regression analysis with RPI5
-NRPI5_model=lm(formula = NRPI5 ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
-                         + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-                         + nhft_s + nhft_s * ssb, 
-               data = shackling_table)
-
-NQRPI5_model=lm(formula = NQRPI5 ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
-                          + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-                          + nhft_s + nhft_s * ssb, 
-                data = shackling_table)
-
-summary(NRPI5_model)
-summary(NQRPI5_model)
-
-
-# Regression analysis with relative range as the dependent, removed from equation as independent
-# rel_range = ssb + factor(symbol) + market_cap + sum_vol + vwap
-rel_range_model=lm(formula = rel_range ~ ssb + factor(symbol) + market_cap + sum_vol + vwap
-                             + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-                             + nhft_s + nhft_s * ssb, 
-                   data = shackling_table)
-
-summary(rel_range_model)
-
-
-
-
-
-
-
 
 
