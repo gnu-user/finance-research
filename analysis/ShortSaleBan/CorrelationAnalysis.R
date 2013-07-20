@@ -212,6 +212,8 @@ gen_measures_table <- function(daily_data, time_weight_data)
 }
 
 
+# The file to save the correlations matrix
+cor_file <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/results/correlations_matrix.csv"
 
 
 # Create the HFT and NHFT volume table
@@ -227,5 +229,6 @@ market_measures <- gen_measures_table(daily_results, time_weight_results)
 cor_table <- merge(vol_table,
                    market_measures[, .SD, by="time,symbol"])
 
+
 cor_matrix <- cor(cor_table[, list(hft_d, hft_s, hft_a, sum_vol, rel_range, market_cap, vwap, NRQS, NQRQS, NRES, NQRES, NRPI5, NQRPI5)])
-write.csv(cor_matrix, "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/results/correlations.csv")
+write.csv(cor_matrix, cor_file)
