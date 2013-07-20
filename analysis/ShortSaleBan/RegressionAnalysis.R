@@ -120,8 +120,8 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
 }
 
 
-# Create a data table similar to what was used for the shackling shortsellers paper
-gen_shackling_table <- function(daily_data, time_weight_data, matches)
+# Create a data table for performing the main set of regressions
+gen_regression_table <- function(daily_data, time_weight_data, matches)
 {
   # Get the list of banned symbols
   ban_date <- as_date("2008-09-19")
@@ -272,8 +272,8 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
 }
 
 
-# Create a table for regression analysis with RQS as dependent and daily volume as independent
-gen_RQS_table <- function(dataset)
+# Create a table for regression analysis with HFT daily volume as independent
+gen_HFT_table <- function(dataset)
 {  
   # The initial table of each date and symbol
   results <- dataset[, list(symbol=unique(symbol)), by=time]
@@ -283,33 +283,62 @@ gen_RQS_table <- function(dataset)
   results <- merge(results, 
                    dataset[type == "HFT_D" & shortsale == FALSE, list(hft_d=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
+                   dataset[type == "HFT_S" & shortsale == FALSE, list(hft_s=sum_vol), by="time,symbol"], all.x=TRUE)
+  
+  # Set any entries that are NA to 0
+  results[is.na(hft_d), hft_d := 0]
+  results[is.na(hft_s), hft_s := 0]
+  
+  # Calculate the combined volume for supply and demand
+  results[, hft_a := (hft_d + hft_s)]
+  
+  
+  results <- merge(results, 
                    dataset[type == "HFT_D" & shortsale == TRUE, list(hft_d_short=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
-                   dataset[type == "HFT_S" & shortsale == FALSE, list(hft_s=sum_vol), by="time,symbol"], all.x=TRUE)
-  results <- merge(results, 
                    dataset[type == "HFT_S" & shortsale == TRUE, list(hft_s_short=sum_vol), by="time,symbol"], all.x=TRUE)
+  
+  # Set any entries that are NA to 0
+  results[is.na(hft_d_short), hft_d_short := 0]
+  results[is.na(hft_s_short), hft_s_short := 0]
+  
+  # Calculate the combined volume for supply and demand
+  results[, hft_a_short := (hft_d_short + hft_s_short)]
+  
+  
   results <- merge(results, 
                    dataset[type == "NHFT_D" & shortsale == FALSE, list(nhft_d=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
-                   dataset[type == "NHFT_D" & shortsale == TRUE, list(nhft_d_short=sum_vol), by="time,symbol"], all.x=TRUE)
-  results <- merge(results, 
                    dataset[type == "NHFT_S" & shortsale == FALSE, list(nhft_s=sum_vol), by="time,symbol"], all.x=TRUE)
+  
+  # Set any entries that are NA to 0
+  results[is.na(nhft_d), nhft_d := 0]
+  results[is.na(nhft_s), nhft_s := 0]
+  
+  # Calculate the combined volume for supply and demand
+  results[, nhft_a := (nhft_d + nhft_s)]
+  
+  
+  results <- merge(results, 
+                   dataset[type == "NHFT_D" & shortsale == TRUE, list(nhft_d_short=sum_vol), by="time,symbol"], all.x=TRUE)
+
   results <- merge(results, 
                    dataset[type == "NHFT_S" & shortsale == TRUE, list(nhft_s_short=sum_vol), by="time,symbol"], all.x=TRUE)
+  
+  # Set any entries that are NA to 0
+  results[is.na(nhft_d_short), nhft_d_short := 0]
+  results[is.na(nhft_s_short), nhft_s_short := 0]
+  
+  # Calculate the combined volume for supply and demand
+  results[, nhft_a_short := (nhft_d_short + nhft_s_short)]
+  
   
   # Set the RQS and ban dummy
   results <- merge(results, 
                    unique(dataset[, list(NRQS, NQRQS, ssb), by="time,symbol"]))
-
+  
+  
   # Set any entries that are NA to 0
-  results[is.na(hft_d), hft_d := 0]
-  results[is.na(hft_d_short), hft_d_short := 0]
-  results[is.na(hft_s), hft_s := 0]
-  results[is.na(hft_s_short), hft_s_short := 0]
-  results[is.na(nhft_d), nhft_d := 0]
-  results[is.na(nhft_d_short), nhft_d_short := 0]
-  results[is.na(nhft_s), nhft_s := 0]
-  results[is.na(nhft_s_short), nhft_s_short := 0]
   results[is.na(NRQS), NRQS := 0]
   results[is.na(NQRQS), NQRQS := 0]
   
@@ -317,13 +346,15 @@ gen_RQS_table <- function(dataset)
 }
 
 
-
-# Performs regression analysis similar to the shackling shortsellers paper
-# for RQS, RES, RPI5, and RVOL as the dependent variables given the formula
-# for the indepedent variables and the dataset provided. The results of the 
-# regression are saved to text files in the directory provided.
-shackling_regression <- function(dataset, formula, rvol_formula, directory)
+# Performs regression analysis for RQS, RES, RPI5, and RVOL as the dependent variables 
+# given the formula for the indepedent variables and the dataset provided. The results 
+# of the regression are saved to text files in the directory provided.
+perform_regression <- function(dataset, formula, rvol_formula, directory)
 {
+  # Create the directory for storing the results if it does not already exist
+  dir.create(directory, showWarnings = FALSE)
+  
+  
   # Regression analysis with RQS as dependent
   NRQS_model=lm(formula = as.formula(paste("NRQS", formula, sep=" ~ ")), 
                 data = dataset)
@@ -383,26 +414,31 @@ shackling_regression <- function(dataset, formula, rvol_formula, directory)
 }
 
 
-  
+
+
+# The root directory to store the regression results
+root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/20-07-2013"
+
+
 # Create regression analysis datasets for the mean daily volume, and RQS
 dataset_original <- gen_dataset_orig(daily_results, time_weight_results, final_matched)
 
 
-# Perform regression analysis for the orginal banned stocks with RQS as dependent and volume as independent
+# Perform regression analysis for the orginal banned stocks with RQS as dependent and HFT volume as independent
 # 
 # RQS = constant + hft_d + hft_d_short + hft_s + hft_s_short + nhft_d + nhft_d_short + nhft_s + nhft_s_short 
 #     + hft_d * ssb + hft_d_short * ssb + hft_s * ssb + hft_s_short * ssb + nhft_d * ssb + nhft_d_short * ssb 
 #     + nhft_s * ssb + nhft_s_short * ssb + ssb + epsilon
 #
-RQS_table <- gen_RQS_table(dataset_original)
+HFT_table <- gen_HFT_table(dataset_original)
 
 NRQS_model=lm(NRQS~hft_d + hft_d_short + hft_s + hft_s_short + nhft_d + nhft_d_short + nhft_s + nhft_s_short 
               + hft_d * ssb + hft_d_short * ssb + hft_s * ssb + hft_s_short * ssb + nhft_d * ssb 
-              + nhft_d_short * ssb + nhft_s * ssb + nhft_s_short * ssb + ssb, RQS_table)
+              + nhft_d_short * ssb + nhft_s * ssb + nhft_s_short * ssb + ssb, HFT_table)
 
 NQRQS_model=lm(NQRQS~hft_d + hft_d_short + hft_s + hft_s_short + nhft_d + nhft_d_short + nhft_s + nhft_s_short 
                + hft_d * ssb + hft_d_short * ssb + hft_s * ssb + hft_s_short * ssb + nhft_d * ssb 
-               + nhft_d_short * ssb + nhft_s * ssb + nhft_s_short * ssb + ssb, RQS_table)
+               + nhft_d_short * ssb + nhft_s * ssb + nhft_s_short * ssb + ssb, HFT_table)
 
 
 # NRQS Regression Analysis for Original Banned Stocks
@@ -415,6 +451,16 @@ summary(NQRQS_model)
 
 
 
+# Create the dataset for performing the main set of regressions
+regression_table <- gen_regression_table(daily_results, time_weight_results, final_matched)
+setkey(regression_table, time, symbol)
+
+# Combine the regression table and the HFT table
+regression_table <- merge(regression_table,
+                          HFT_table[, 
+                                   list(hft_d, hft_d_short, hft_s, hft_s_short, nhft_d, nhft_d_short, nhft_s, nhft_s_short), 
+                                   by="time,symbol"])
+
 
 # Start by performing regression analysis similar to the shackling shortsellers paper
 # for RQS, RES, RPI5, and RVOL as the dependent variables
@@ -423,13 +469,14 @@ summary(NQRQS_model)
 #             + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
 #             + nhft_s + nhft_s * ssb
 #
-shackling_table <- gen_shackling_table(daily_results, time_weight_results, final_matched)
-setkey(shackling_table, time, symbol)
 
-# Combine the shackling table the the HFT data from the RQS table
-shackling_table <- merge(shackling_table,
-                         RQS_table[, 
-                                   list(hft_d, hft_d_short, hft_s, hft_s_short, nhft_d, nhft_d_short, nhft_s, nhft_s_short), 
-                                   by="time,symbol"])
+# The two formulas to use for the shackling shortsellers regressions
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
+nhft_d * ssb + nhft_s + nhft_s * ssb"
 
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
+nhft_d * ssb + nhft_s + nhft_s * ssb"
 
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "shackling"), sep="/")
