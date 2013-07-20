@@ -61,15 +61,22 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
         daily_volume <- merge(daily_volume, 
                               daily_data[symbol == matched & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
                                          list(match_sum_vol=sum(sum_vol)), by="time"],
-                              by="time")
+                              by="time", all.x=TRUE)
+        daily_volume[is.na(ban_sum_vol), ban_sum_vol := 0]
+        daily_volume[is.na(match_sum_vol), match_sum_vol := 0]
         
         
         # Calculate the dependent variable, RQS
         daily_RQS <- time_weight_data[symbol == ban_symbol, 
-                                      list(NRQS_ban=(2 * mean_NRQHS), NQRQS_ban=(2 * mean_NQRQHS)), by="time"]
+                                      list(NRQS_ban=(2 * mean_NRQHS), NQRQS_ban=(2 * mean_NQRQHS)), by="time,symbol"]
         daily_RQS <- merge(daily_RQS,
                            time_weight_data[symbol == matched, 
-                                            list(NRQS_match=(2 * mean_NRQHS), NQRQS_match=(2 * mean_NQRQHS)), by="time"])
+                                            list(NRQS_match=(2 * mean_NRQHS), NQRQS_match=(2 * mean_NQRQHS)), by="time"], 
+                           by="time", all.x=TRUE)
+        daily_RQS[is.na(NRQS_ban), NRQS_ban := 0]
+        daily_RQS[is.na(NQRQS_ban), NQRQS_ban := 0]
+        daily_RQS[is.na(NRQS_match), NRQS_match := 0]
+        daily_RQS[is.na(NQRQS_match), NQRQS_match := 0]
         
         
         # Calculate the difference for the current symbol, store results
@@ -121,7 +128,9 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     daily_volume <- merge(daily_volume, 
                           daily_data[symbol == matched,
                                      list(match_sum_vol=sum(sum_vol)), by="time"],
-                          by="time")
+                          by="time", all.x=TRUE)
+    daily_volume[is.na(ban_sum_vol), ban_sum_vol := 0]
+    daily_volume[is.na(match_sum_vol), match_sum_vol := 0]
     
     
     # Relative range
@@ -131,7 +140,9 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     relative_range <- merge(relative_range, 
                             daily_data[symbol == matched,
                                        list(match_rel_range=mean(rel_range)), by="time"],
-                            by="time")
+                            by="time", all.x=TRUE)
+    relative_range[is.na(ban_rel_range), ban_rel_range := 0]
+    relative_range[is.na(match_rel_range), match_rel_range := 0]
     
     
     # Market cap
@@ -141,7 +152,9 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     market_cap <- merge(market_cap, 
                         daily_data[symbol == matched,
                                    list(match_market_cap=mean(market_cap)), by="time"],
-                            by="time")
+                            by="time", all.x=TRUE)
+    market_cap[is.na(ban_market_cap), ban_market_cap := 0]
+    market_cap[is.na(match_market_cap), match_market_cap := 0]
     
     
     # Calculate the daily weighted average price (WAP) by volume (VWAP)
@@ -152,15 +165,21 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     daily_VWAP <- merge(daily_VWAP, 
                         daily_data[symbol == matched,
                                    list(match_vwap=(mean(rel_range) / (mean(max_price) - mean(min_price)))^-1), by="time"],
-                        by="time")
+                        by="time", all.x=TRUE)
+    daily_VWAP[is.na(ban_vwap) | is.nan(ban_vwap), ban_vwap := 0]
+    daily_VWAP[is.na(match_vwap) | is.nan(match_vwap), match_vwap := 0]
     
     
     # Calculate the dependent variable, RQS
     daily_RQS <- time_weight_data[symbol == ban_symbol, 
-                                  list(NRQS_ban=(2 * mean_NRQHS), NQRQS_ban=(2 * mean_NQRQHS)), by="time"]
+                                  list(NRQS_ban=(2 * mean_NRQHS), NQRQS_ban=(2 * mean_NQRQHS)), by="time,symbol"]
     daily_RQS <- merge(daily_RQS,
                        time_weight_data[symbol == matched, 
-                                        list(NRQS_match=(2 * mean_NRQHS), NQRQS_match=(2 * mean_NQRQHS)), by="time"])
+                                        list(NRQS_match=(2 * mean_NRQHS), NQRQS_match=(2 * mean_NQRQHS)), by="time"], by="time", all.x=TRUE)
+    daily_RQS[is.na(NRQS_ban), NRQS_ban := 0]
+    daily_RQS[is.na(NQRQS_ban), NQRQS_ban := 0]
+    daily_RQS[is.na(NRQS_match), NRQS_match := 0]
+    daily_RQS[is.na(NQRQS_match), NQRQS_match := 0]
     
     
     # Calculate the dependent variable, RES
@@ -170,7 +189,11 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     daily_RES <- merge(daily_RES, 
                        daily_data[symbol == matched,
                                   list(NRES_match=mean(mean_NRES), NQRES_match=mean(mean_NQRES)), by="time"],
-                       by="time")
+                       by="time", all.x=TRUE)
+    daily_RES[is.na(NRES_ban), NRES_ban := 0]
+    daily_RES[is.na(NQRES_ban), NQRES_ban := 0]
+    daily_RES[is.na(NRES_match), NRES_match := 0]
+    daily_RES[is.na(NQRES_match), NQRES_match := 0]
     
     
     # Calculate the depndent variable, RPI5
@@ -180,8 +203,11 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     daily_RPI5 <- merge(daily_RPI5, 
                         daily_data[symbol == matched,
                                    list(NRPI5_match=mean(mean_NRPI5), NQRPI5_match=mean(mean_NQRPI5)), by="time"],
-                        by="time")    
-      
+                        by="time", all.x=TRUE)    
+    daily_RPI5[is.na(NRPI5_ban), NRPI5_ban := 0]
+    daily_RPI5[is.na(NQRPI5_ban), NQRPI5_ban := 0]
+    daily_RPI5[is.na(NRPI5_match), NRPI5_match := 0]
+    daily_RPI5[is.na(NQRPI5_match), NQRPI5_match := 0]
     
     
     # Calculate the difference for the current symbol, store results
@@ -189,30 +215,30 @@ gen_shackling_table <- function(daily_data, time_weight_data, matches)
     
     result <- merge(result,
                     relative_range[, list(rel_range=(ban_rel_range - match_rel_range)), by="time"],
-                    by="time")
+                    by="time", all.x=TRUE)
 
     result <- merge(result,
                     market_cap[, list(market_cap=(ban_market_cap - match_market_cap)), by="time"],
-                    by="time")
+                    by="time", all.x=TRUE)
     
     result <- merge(result,
                     daily_VWAP[, list(vwap=(ban_vwap - match_vwap)), by="time"],
-                    by="time")
+                    by="time", all.x=TRUE)
     
     result <- merge(result,
                     daily_RQS[, list(NRQS=(NRQS_ban - NRQS_match), 
                                      NQRQS=(NQRQS_ban - NQRQS_match)), by="time"],
-                    by="time")
+                    by="time", all.x=TRUE)
     
     result <- merge(result,
                     daily_RES[, list(NRES=(NRES_ban - NRES_match), 
                                      NQRES=(NQRES_ban - NQRES_match)), by="time"],
-                    by="time")
+                    by="time", all.x=TRUE)
     
     result <- merge(result,
                     daily_RPI5[, list(NRPI5=(NRPI5_ban - NRPI5_match), 
                                      NQRPI5=(NQRPI5_ban - NQRPI5_match)), by="time"],
-                    by="time")
+                    by="time", all.x=TRUE)
     
     
     if (exists("results"))
@@ -263,51 +289,20 @@ gen_RQS_table <- function(dataset)
   results <- merge(results, 
                    unique(dataset[, list(NRQS, NQRQS, ssb), by="time,symbol"]))
 
+  # Set any entries that are NA to 0
+  results[is.na(hft_d), hft_d := 0]
+  results[is.na(hft_d_short), hft_d_short := 0]
+  results[is.na(hft_s), hft_s := 0]
+  results[is.na(hft_s_short), hft_s_short := 0]
+  results[is.na(nhft_d), nhft_d := 0]
+  results[is.na(nhft_d_short), nhft_d_short := 0]
+  results[is.na(nhft_s), nhft_s := 0]
+  results[is.na(nhft_s_short), nhft_s_short := 0]
+  results[is.na(NRQS), NRQS := 0]
+  results[is.na(NQRQS), NQRQS := 0]
+  
   return(results)
 }
-
-
-
-# Start by performing regression analysis similar to the shackling shortsellers paper
-# for RQS, RES, RPI5, and RVOL as the dependent variables
-#
-# DEPENDENT = ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
-#
-shackling_table <- gen_shackling_table(daily_results, time_weight_results, final_matched)
-
-# Regression analysis with RQS as dependent
-NRQS_model=lm(formula = NRQS ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
-NQRQS_model=lm(formula = NQRQS ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
-
-summary(NRQS_model)
-summary(NQRQS_model)
-
-
-# Regression analysis with RES
-NRES_model=lm(formula = NRES ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
-NQRES_model=lm(formula = NQRES ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
-
-summary(NRES_model)
-summary(NQRES_model)
-
-
-# Regression analysis with RPI5
-NRPI5_model=lm(formula = NRPI5 ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
-NQRPI5_model=lm(formula = NQRPI5 ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap, data = shackling_table)
-
-summary(NRPI5_model)
-summary(NQRPI5_model)
-
-
-# Regression analysis with relative range as the dependent, removed from equation as independent
-# rel_range = ssb + factor(symbol) + market_cap + sum_vol + vwap
-rel_range_model=lm(formula = rel_range ~ ssb + factor(symbol) + market_cap + sum_vol + vwap, data = shackling_table)
-
-summary(rel_range_model)
-
-
-
-
 
 
 
@@ -316,7 +311,7 @@ summary(rel_range_model)
 dataset_original <- gen_dataset_orig(daily_results, time_weight_results, final_matched)
 
 
-# Perform regression analysis for the orginal banned stocks with RQS as the dependent variable
+# Perform regression analysis for the orginal banned stocks with RQS as dependent and volume as independent
 # 
 # RQS = constant + hft_d + hft_d_short + hft_s + hft_s_short + nhft_d + nhft_d_short + nhft_s + nhft_s_short 
 #     + hft_d * ssb + hft_d_short * ssb + hft_s * ssb + hft_s_short * ssb + nhft_d * ssb + nhft_d_short * ssb 
@@ -338,3 +333,88 @@ summary(NRQS_model)
 
 #NQRQS Regression Analysis for Original Banned Stocks")
 summary(NQRQS_model)
+
+
+
+
+
+
+# Start by performing regression analysis similar to the shackling shortsellers paper
+# for RQS, RES, RPI5, and RVOL as the dependent variables
+#
+# DEPENDENT = ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap 
+#             + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+#             + nhft_s + nhft_s * ssb
+#
+shackling_table <- gen_shackling_table(daily_results, time_weight_results, final_matched)
+setkey(shackling_table, time, symbol)
+
+# Combine the shackling table the the HFT data from the RQS table
+shackling_table <- merge(shackling_table,
+                         RQS_table[, 
+                                   list(hft_d, hft_d_short, hft_s, hft_s_short, nhft_d, nhft_d_short, nhft_s, nhft_s_short), 
+                                   by="time,symbol"])
+
+
+# Regression analysis with RQS as dependent
+NRQS_model=lm(formula = NRQS ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap 
+                        + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+                        + nhft_s + nhft_s * ssb, 
+              data = shackling_table)
+
+NQRQS_model=lm(formula = NQRQS ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
+                         + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+                         + nhft_s + nhft_s * ssb, 
+               data = shackling_table)
+
+summary(NRQS_model)
+summary(NQRQS_model)
+
+
+# Regression analysis with RES
+NRES_model=lm(formula = NRES ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
+                        + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+                        + nhft_s + nhft_s * ssb, 
+              data = shackling_table)
+
+NQRES_model=lm(formula = NQRES ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
+                         + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+                         + nhft_s + nhft_s * ssb, 
+               data = shackling_table)
+
+summary(NRES_model)
+summary(NQRES_model)
+
+
+# Regression analysis with RPI5
+NRPI5_model=lm(formula = NRPI5 ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
+                         + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+                         + nhft_s + nhft_s * ssb, 
+               data = shackling_table)
+
+NQRPI5_model=lm(formula = NQRPI5 ~ ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap
+                          + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+                          + nhft_s + nhft_s * ssb, 
+                data = shackling_table)
+
+summary(NRPI5_model)
+summary(NQRPI5_model)
+
+
+# Regression analysis with relative range as the dependent, removed from equation as independent
+# rel_range = ssb + factor(symbol) + market_cap + sum_vol + vwap
+rel_range_model=lm(formula = rel_range ~ ssb + factor(symbol) + market_cap + sum_vol + vwap
+                             + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+                             + nhft_s + nhft_s * ssb, 
+                   data = shackling_table)
+
+summary(rel_range_model)
+
+
+
+
+
+
+
+
+
