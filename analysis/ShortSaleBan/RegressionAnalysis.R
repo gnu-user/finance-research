@@ -74,8 +74,8 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
                               daily_data[symbol == matched & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
                                          list(match_sum_vol=sum(sum_vol)), by="time"],
                               by="time", all.x=TRUE)
-        daily_volume[is.na(ban_sum_vol), ban_sum_vol := 0]
-        daily_volume[is.na(match_sum_vol), match_sum_vol := 0]
+        #daily_volume[is.na(ban_sum_vol), ban_sum_vol := 0]
+        #daily_volume[is.na(match_sum_vol), match_sum_vol := 0]
         
         
         # Calculate the dependent variable, RQS
@@ -85,10 +85,10 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
                            time_weight_data[symbol == matched, 
                                             list(NRQS_match=(2 * mean_NRQHS), NQRQS_match=(2 * mean_NQRQHS)), by="time"], 
                            by="time", all.x=TRUE)
-        daily_RQS[is.na(NRQS_ban), NRQS_ban := 0]
-        daily_RQS[is.na(NQRQS_ban), NQRQS_ban := 0]
-        daily_RQS[is.na(NRQS_match), NRQS_match := 0]
-        daily_RQS[is.na(NQRQS_match), NQRQS_match := 0]
+        #daily_RQS[is.na(NRQS_ban), NRQS_ban := 0]
+        #daily_RQS[is.na(NQRQS_ban), NQRQS_ban := 0]
+        #daily_RQS[is.na(NRQS_match), NRQS_match := 0]
+        #daily_RQS[is.na(NQRQS_match), NQRQS_match := 0]
         
         
         # Calculate the difference for the current symbol, store results
@@ -141,8 +141,8 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
                           daily_data[symbol == matched,
                                      list(match_sum_vol=sum(sum_vol)), by="time"],
                           by="time", all.x=TRUE)
-    daily_volume[is.na(ban_sum_vol), ban_sum_vol := 0]
-    daily_volume[is.na(match_sum_vol), match_sum_vol := 0]
+    #daily_volume[is.na(ban_sum_vol), ban_sum_vol := 0]
+    #daily_volume[is.na(match_sum_vol), match_sum_vol := 0]
     
     
     # Relative range
@@ -153,8 +153,8 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
                             daily_data[symbol == matched,
                                        list(match_rel_range=mean(rel_range)), by="time"],
                             by="time", all.x=TRUE)
-    relative_range[is.na(ban_rel_range), ban_rel_range := 0]
-    relative_range[is.na(match_rel_range), match_rel_range := 0]
+    #relative_range[is.na(ban_rel_range), ban_rel_range := 0]
+    #relative_range[is.na(match_rel_range), match_rel_range := 0]
     
     
     # Market cap
@@ -165,8 +165,8 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
                         daily_data[symbol == matched,
                                    list(match_market_cap=mean(market_cap)), by="time"],
                             by="time", all.x=TRUE)
-    market_cap[is.na(ban_market_cap), ban_market_cap := 0]
-    market_cap[is.na(match_market_cap), match_market_cap := 0]
+    #market_cap[is.na(ban_market_cap), ban_market_cap := 0]
+    #market_cap[is.na(match_market_cap), match_market_cap := 0]
     
     
     # Calculate the daily weighted average price (WAP) by volume (VWAP)
@@ -178,8 +178,8 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
                         daily_data[symbol == matched,
                                    list(match_vwap=(mean(rel_range) / (mean(max_price) - mean(min_price)))^-1), by="time"],
                         by="time", all.x=TRUE)
-    daily_VWAP[is.na(ban_vwap) | is.nan(ban_vwap), ban_vwap := 0]
-    daily_VWAP[is.na(match_vwap) | is.nan(match_vwap), match_vwap := 0]
+    #daily_VWAP[is.na(ban_vwap) | is.nan(ban_vwap), ban_vwap := 0]
+    #daily_VWAP[is.na(match_vwap) | is.nan(match_vwap), match_vwap := 0]
     
     
     # Calculate the dependent variable, RQS
@@ -188,10 +188,10 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
     daily_RQS <- merge(daily_RQS,
                        time_weight_data[symbol == matched, 
                                         list(NRQS_match=(2 * mean_NRQHS), NQRQS_match=(2 * mean_NQRQHS)), by="time"], by="time", all.x=TRUE)
-    daily_RQS[is.na(NRQS_ban), NRQS_ban := 0]
-    daily_RQS[is.na(NQRQS_ban), NQRQS_ban := 0]
-    daily_RQS[is.na(NRQS_match), NRQS_match := 0]
-    daily_RQS[is.na(NQRQS_match), NQRQS_match := 0]
+    #daily_RQS[is.na(NRQS_ban), NRQS_ban := 0]
+    #daily_RQS[is.na(NQRQS_ban), NQRQS_ban := 0]
+    #daily_RQS[is.na(NRQS_match), NRQS_match := 0]
+    #daily_RQS[is.na(NQRQS_match), NQRQS_match := 0]
     
     
     # Calculate the dependent variable, RES
@@ -202,10 +202,10 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
                        daily_data[symbol == matched,
                                   list(NRES_match=mean(mean_NRES), NQRES_match=mean(mean_NQRES)), by="time"],
                        by="time", all.x=TRUE)
-    daily_RES[is.na(NRES_ban), NRES_ban := 0]
-    daily_RES[is.na(NQRES_ban), NQRES_ban := 0]
-    daily_RES[is.na(NRES_match), NRES_match := 0]
-    daily_RES[is.na(NQRES_match), NQRES_match := 0]
+    #daily_RES[is.na(NRES_ban), NRES_ban := 0]
+    #daily_RES[is.na(NQRES_ban), NQRES_ban := 0]
+    #daily_RES[is.na(NRES_match), NRES_match := 0]
+    #daily_RES[is.na(NQRES_match), NQRES_match := 0]
     
     
     # Calculate the depndent variable, RPI5
@@ -216,10 +216,10 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
                         daily_data[symbol == matched,
                                    list(NRPI5_match=mean(mean_NRPI5), NQRPI5_match=mean(mean_NQRPI5)), by="time"],
                         by="time", all.x=TRUE)    
-    daily_RPI5[is.na(NRPI5_ban), NRPI5_ban := 0]
-    daily_RPI5[is.na(NQRPI5_ban), NQRPI5_ban := 0]
-    daily_RPI5[is.na(NRPI5_match), NRPI5_match := 0]
-    daily_RPI5[is.na(NQRPI5_match), NQRPI5_match := 0]
+    #daily_RPI5[is.na(NRPI5_ban), NRPI5_ban := 0]
+    #daily_RPI5[is.na(NQRPI5_ban), NQRPI5_ban := 0]
+    #daily_RPI5[is.na(NRPI5_match), NRPI5_match := 0]
+    #daily_RPI5[is.na(NQRPI5_match), NQRPI5_match := 0]
     
     
     # Calculate the difference for the current symbol, store results
@@ -286,11 +286,13 @@ gen_HFT_table <- function(dataset)
                    dataset[type == "HFT_S" & shortsale == FALSE, list(hft_s=sum_vol), by="time,symbol"], all.x=TRUE)
   
   # Set any entries that are NA to 0
-  results[is.na(hft_d), hft_d := 0]
-  results[is.na(hft_s), hft_s := 0]
+  #results[is.na(hft_d), hft_d := 0]
+  #results[is.na(hft_s), hft_s := 0]
   
   # Calculate the combined volume for supply and demand
-  results[, hft_a := (hft_d + hft_s)]
+  results[!is.na(hft_d) & !is.na(hft_s), hft_a := (hft_d + hft_s)]
+  results[!is.na(hft_d) & is.na(hft_s), hft_a := hft_d]
+  results[is.na(hft_d) & !is.na(hft_s), hft_a := hft_s]
   
   
   results <- merge(results, 
@@ -299,11 +301,13 @@ gen_HFT_table <- function(dataset)
                    dataset[type == "HFT_S" & shortsale == TRUE, list(hft_s_short=sum_vol), by="time,symbol"], all.x=TRUE)
   
   # Set any entries that are NA to 0
-  results[is.na(hft_d_short), hft_d_short := 0]
-  results[is.na(hft_s_short), hft_s_short := 0]
+  #results[is.na(hft_d_short), hft_d_short := 0]
+  #results[is.na(hft_s_short), hft_s_short := 0]
   
   # Calculate the combined volume for supply and demand
-  results[, hft_a_short := (hft_d_short + hft_s_short)]
+  results[!is.na(hft_d_short) & !is.na(hft_s_short), hft_a_short := (hft_d_short + hft_s_short)]
+  results[!is.na(hft_d_short) & is.na(hft_s_short), hft_a_short := hft_d_short]
+  results[is.na(hft_d_short) & !is.na(hft_s_short), hft_a_short := hft_s_short]
   
   
   results <- merge(results, 
@@ -312,11 +316,13 @@ gen_HFT_table <- function(dataset)
                    dataset[type == "NHFT_S" & shortsale == FALSE, list(nhft_s=sum_vol), by="time,symbol"], all.x=TRUE)
   
   # Set any entries that are NA to 0
-  results[is.na(nhft_d), nhft_d := 0]
-  results[is.na(nhft_s), nhft_s := 0]
+  #results[is.na(nhft_d), nhft_d := 0]
+  #results[is.na(nhft_s), nhft_s := 0]
   
   # Calculate the combined volume for supply and demand
-  results[, nhft_a := (nhft_d + nhft_s)]
+  results[!is.na(nhft_d) & !is.na(nhft_s), nhft_a := (nhft_d + nhft_s)]
+  results[!is.na(nhft_d) & is.na(nhft_s), nhft_a := nhft_d]
+  results[is.na(nhft_d) & !is.na(nhft_s), nhft_a := nhft_s]
   
   
   results <- merge(results, 
@@ -326,11 +332,40 @@ gen_HFT_table <- function(dataset)
                    dataset[type == "NHFT_S" & shortsale == TRUE, list(nhft_s_short=sum_vol), by="time,symbol"], all.x=TRUE)
   
   # Set any entries that are NA to 0
-  results[is.na(nhft_d_short), nhft_d_short := 0]
-  results[is.na(nhft_s_short), nhft_s_short := 0]
+  #results[is.na(nhft_d_short), nhft_d_short := 0]
+  #results[is.na(nhft_s_short), nhft_s_short := 0]
   
   # Calculate the combined volume for supply and demand
-  results[, nhft_a_short := (nhft_d_short + nhft_s_short)]
+  results[!is.na(nhft_d_short) & !is.na(nhft_s_short), nhft_a_short := (nhft_d_short + nhft_s_short)]
+  results[!is.na(nhft_d_short) & is.na(nhft_s_short), nhft_a_short := nhft_d_short]
+  results[is.na(nhft_d_short) & !is.na(nhft_s_short), nhft_a_short := nhft_s_short]
+  
+  
+  
+  # Add additional columns for the natural log of the HFT data, where it is computed as follows:
+  # if value positive: ln(value), if value negative: -1 * ln(abs(value)), if value 0: 0
+  results[hft_d > 0, hft_d_ln := log(hft_d)]
+  results[hft_d == 0, hft_d_ln := 0]
+  results[hft_d < 0, hft_d_ln := (-1 * log(abs(hft_d)))]
+  
+  results[hft_s > 0, hft_s_ln := log(hft_s)]
+  results[hft_s == 0, hft_s_ln := 0]
+  results[hft_s < 0, hft_s_ln := (-1 * log(abs(hft_s)))]
+  
+  results[hft_a > 0, hft_a_ln := log(hft_a)]
+  results[hft_a == 0, hft_a_ln := 0]
+  results[hft_a < 0, hft_a_ln := (-1 * log(abs(hft_a)))]
+  
+  
+  # Add additional columns for the ratio of HFT to NHFT data  
+  results[nhft_d != 0, hft_d_ratio := (hft_d / nhft_d)]
+  results[nhft_d == 0, hft_d_ratio := 0]
+  
+  results[nhft_s != 0, hft_s_ratio := (hft_s / nhft_s)]
+  results[nhft_s == 0, hft_s_ratio := 0]
+  
+  results[nhft_a != 0, hft_a_ratio := (hft_a / nhft_a)]
+  results[nhft_a == 0, hft_a_ratio := 0]
   
   
   # Set the RQS and ban dummy
@@ -339,8 +374,8 @@ gen_HFT_table <- function(dataset)
   
   
   # Set any entries that are NA to 0
-  results[is.na(NRQS), NRQS := 0]
-  results[is.na(NQRQS), NQRQS := 0]
+  #results[is.na(NRQS), NRQS := 0]
+  #results[is.na(NQRQS), NQRQS := 0]
   
   return(results)
 }
@@ -357,10 +392,10 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
   
   # Regression analysis with RQS as dependent
   NRQS_model=lm(formula = as.formula(paste("NRQS", formula, sep=" ~ ")), 
-                data = dataset)
+                data = dataset, na.action=na.omit)
   
   NQRQS_model=lm(formula = as.formula(paste("NQRQS", formula, sep=" ~ ")), 
-                 data = dataset)
+                 data = dataset, na.action=na.omit)
   
   # Save the regression results
   write("NATIONAL RQS REGRESSION\n==================================================", 
@@ -373,10 +408,10 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
   
   # Regression analysis with RES as dependent
   NRES_model=lm(formula = as.formula(paste("NRES", formula, sep=" ~ ")), 
-                data = dataset)
+                data = dataset, na.action=na.omit)
   
   NQRES_model=lm(formula = as.formula(paste("NQRES", formula, sep=" ~ ")), 
-                 data = dataset)
+                 data = dataset, na.action=na.omit)
   
   # Save the regression results
   write("NATIONAL RES REGRESSION\n==================================================", 
@@ -389,10 +424,10 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
   
   # Regression analysis with RPI5 as dependent
   NRPI5_model=lm(formula = as.formula(paste("NRPI5", formula, sep=" ~ ")), 
-                data = dataset)
+                data = dataset, na.action=na.omit)
   
   NQRPI5_model=lm(formula = as.formula(paste("NQRPI5", formula, sep=" ~ ")), 
-                 data = dataset)
+                 data = dataset, na.action=na.omit)
   
   # Save the regression results
   write("NATIONAL RPI5 REGRESSION\n==================================================", 
@@ -405,7 +440,7 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
   
   # Regression analysis with RVOL as dependent
   RVOL_model=lm(formula = as.formula(paste("rel_range", rvol_formula, sep=" ~ ")), 
-                 data = dataset)
+                 data = dataset, na.action=na.omit)
   
   # Save the regression results
   write("RVOL (RELATIVE RANGE) REGRESSION\n==================================================", 
@@ -417,7 +452,7 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
 
 
 # The root directory to store the regression results
-root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/20-07-2013"
+root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/22-07-2013_NA"
 
 
 # Create regression analysis datasets for the mean daily volume, and RQS
@@ -458,8 +493,11 @@ setkey(regression_table, time, symbol)
 # Combine the regression table and the HFT table
 regression_table <- merge(regression_table,
                           HFT_table[, 
-                                   list(hft_d, hft_s, hft_a, hft_d_short, hft_s_short, hft_a_short, nhft_d, nhft_s, nhft_a, nhft_d_short, nhft_s_short, nhft_a_short), 
+                                   list(hft_d, hft_s, hft_a, hft_d_short, hft_s_short, hft_a_short, 
+                                        nhft_d, nhft_s, nhft_a, nhft_d_short, nhft_s_short, nhft_a_short,
+                                        hft_d_ln, hft_s_ln, hft_a_ln, hft_d_ratio, hft_s_ratio, hft_a_ratio), 
                                    by="time,symbol"])
+
 
 
 # Start by performing regression analysis similar to the shackling shortsellers paper
@@ -480,6 +518,8 @@ hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d +
 nhft_d * ssb + nhft_s + nhft_s * ssb"
 
 perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "shackling", sep="/"))
+
+
 
 
 
@@ -513,3 +553,73 @@ eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap +
 hft_a + hft_a * ssb"
 
 perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A", sep="/"))
+
+
+
+
+
+
+# Perform several regressions, using the natural logarithm of the HFT data
+# HFT_D only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_d_ln + hft_d_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_d_ln + hft_d_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_D_ln", sep="/"))
+
+
+# HFT_S only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_s_ln + hft_s_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_s_ln + hft_s_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_S_ln", sep="/"))
+
+
+# HFT_A only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_a_ln + hft_a_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_a_ln + hft_a_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A_ln", sep="/"))
+
+
+
+
+
+
+# Perform several regressions, using the ratio of HFT to NHFT data
+# HFT_D only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_d_ratio + hft_d_ratio * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_d_ratio + hft_d_ratio * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_D_ratio", sep="/"))
+
+
+# HFT_S only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_s_ratio + hft_s_ratio * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_s_ratio + hft_s_ratio * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_S_ratio", sep="/"))
+
+
+# HFT_A only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_a_ratio + hft_a_ratio * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_a_ratio + hft_a_ratio * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A_ratio", sep="/"))
