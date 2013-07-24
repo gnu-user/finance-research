@@ -67,13 +67,27 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
       {
         matched <- matches[ban_symbol]$match
         
-        daily_volume <- daily_data[symbol == ban_symbol & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
-                             list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
+        if (status)
+        {
+          daily_volume <- daily_data[symbol == ban_symbol & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
+                               list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
+          
+          daily_volume <- merge(daily_volume, 
+                                daily_data[symbol == matched & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
+                                           list(match_sum_vol=sum(sum_vol)), by="time"],
+                                by="time", all.x=TRUE)
+        }
+        else
+        {
+          daily_volume <- daily_data[symbol == ban_symbol & type %in% types[entry][,c(v1,v2)],
+                                     list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
+          
+          daily_volume <- merge(daily_volume, 
+                                daily_data[symbol == matched & type %in% types[entry][,c(v1,v2)],
+                                           list(match_sum_vol=sum(sum_vol)), by="time"],
+                                by="time", all.x=TRUE)
+        }
         
-        daily_volume <- merge(daily_volume, 
-                              daily_data[symbol == matched & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
-                                         list(match_sum_vol=sum(sum_vol)), by="time"],
-                              by="time", all.x=TRUE)
         #daily_volume[is.na(ban_sum_vol), ban_sum_vol := 0]
         #daily_volume[is.na(match_sum_vol), match_sum_vol := 0]
         
@@ -128,14 +142,54 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
   exp_date <- as_date("2008-10-09")
   banned <- matches[AddDate == ban_date, symbol]
   
+  
+  # Aggregate the market cap so there is only one entry for each symbol for each day
+  # as the market cap is not affected by the type of trade
+  agr_market_cap <- daily_data[, list(market_cap=mean(market_cap)), by="time,symbol"]
+  
+  # Calculate the quartile bounds
+  quartiles <- quantile(agr_market_cap[, market_cap], names=FALSE)
+  Q0 <- quartiles[1]
+  Q1 <- quartiles[2]
+  Q2 <- quartiles[3]
+  Q3 <- quartiles[4]
+  Q4 <- quartiles[5]
+  
+  
   # For each banned symbol get the match and calculate the differences of the variables
   for (ban_symbol in banned)
   {
     matched <- matches[ban_symbol]$match
     
+    # Determine the quartile of the current banned symbol based on market cap
+    ban_cap <- mean(daily_data[symbol == ban_symbol, 
+                               list(market_cap=mean(market_cap)), by="time"]$market_cap)
+    
+    if (ban_cap >= Q0 && ban_cap <= Q1)
+    {
+      quartile <- "Q1"
+    }
+    else if (ban_cap > Q1 && ban_cap <= Q2)
+    {
+      quartile <- "Q2"
+    }
+    else if (ban_cap > Q2 && ban_cap <= Q3)
+    {
+      quartile <- "Q3"
+    }
+    else if (ban_cap > Q3 && ban_cap <= Q4)
+    {
+      quartile <- "Q4"
+    }
+    else
+    {
+      quartile <- NA
+    }
+    
+    
     # The daily trading volume
     daily_volume <- daily_data[symbol == ban_symbol,
-                               list(ban_sum_vol=sum(sum_vol)), by="time,symbol"]
+                               list(Q=quartile, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
     
     daily_volume <- merge(daily_volume, 
                           daily_data[symbol == matched,
@@ -223,7 +277,7 @@ gen_regression_table <- function(daily_data, time_weight_data, matches)
     
     
     # Calculate the difference for the current symbol, store results
-    result <- daily_volume[, list(sum_vol=(ban_sum_vol - match_sum_vol)), by="time,symbol"]
+    result <- daily_volume[, list(sum_vol=(ban_sum_vol - match_sum_vol)), by="time,symbol,Q"]
     
     result <- merge(result,
                     relative_range[, list(rel_range=(ban_rel_range - match_rel_range)), by="time"],
@@ -409,8 +463,9 @@ gen_HFT_table <- function(dataset)
 
 # Performs regression analysis for RQS, RES, RPI5, and RVOL as the dependent variables 
 # given the formula for the indepedent variables and the dataset provided. The results 
-# of the regression are saved to text files in the directory provided.
-perform_regression <- function(dataset, formula, rvol_formula, directory)
+# of the regression are saved to text files in the directory provided and the postfix 
+# is added to each file name if provided.
+perform_regression <- function(dataset, formula, rvol_formula, directory, postfix)
 {
   # Create the directory for storing the results if it does not already exist
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
@@ -424,12 +479,13 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
                  data = dataset, na.action=na.omit)
   
   # Save the regression results
+  filename <- paste("RQS_Regression", postfix, ".txt", sep="")
   write("NATIONAL RQS REGRESSION\n==================================================", 
-         file = paste(directory, "RQS_Regression.txt", sep="/"))
-  capture.output(summary(NRQS_model), file = paste(directory, "RQS_Regression.txt", sep="/"), append = TRUE)
+         file = paste(directory, filename, sep="/"))
+  capture.output(summary(NRQS_model), file = paste(directory, filename, sep="/"), append = TRUE)
   write("\n\n\n\n\n\n\nNASDAQ RQS REGRESSION\n==================================================", 
-        file = paste(directory, "RQS_Regression.txt", sep="/"), append = TRUE)
-  capture.output(summary(NQRQS_model), file = paste(directory, "RQS_Regression.txt", sep="/"), append = TRUE)
+        file = paste(directory, filename, sep="/"), append = TRUE)
+  capture.output(summary(NQRQS_model), file = paste(directory, filename, sep="/"), append = TRUE)
   
   
   # Regression analysis with RES as dependent
@@ -440,12 +496,13 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
                  data = dataset, na.action=na.omit)
   
   # Save the regression results
+  filename <- paste("RES_Regression", postfix, ".txt", sep="")
   write("NATIONAL RES REGRESSION\n==================================================", 
-        file = paste(directory, "RES_Regression.txt", sep="/"))
-  capture.output(summary(NRES_model), file = paste(directory, "RES_Regression.txt", sep="/"), append = TRUE)
+        file = paste(directory, filename, sep="/"))
+  capture.output(summary(NRES_model), file = paste(directory, filename, sep="/"), append = TRUE)
   write("\n\n\n\n\n\n\nNASDAQ RES REGRESSION\n==================================================", 
-        file = paste(directory, "RES_Regression.txt", sep="/"), append = TRUE)
-  capture.output(summary(NQRES_model), file = paste(directory, "RES_Regression.txt", sep="/"), append = TRUE)
+        file = paste(directory, filename, sep="/"), append = TRUE)
+  capture.output(summary(NQRES_model), file = paste(directory, filename, sep="/"), append = TRUE)
   
   
   # Regression analysis with RPI5 as dependent
@@ -456,12 +513,13 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
                  data = dataset, na.action=na.omit)
   
   # Save the regression results
+  filename <- paste("RPI5_Regression", postfix, ".txt", sep="")
   write("NATIONAL RPI5 REGRESSION\n==================================================", 
-        file = paste(directory, "RPI5_Regression.txt", sep="/"))
-  capture.output(summary(NRPI5_model), file = paste(directory, "RPI5_Regression.txt", sep="/"), append = TRUE)
+        file = paste(directory, filename, sep="/"))
+  capture.output(summary(NRPI5_model), file = paste(directory, filename, sep="/"), append = TRUE)
   write("\n\n\n\n\n\n\nNASDAQ RPI5 REGRESSION\n==================================================", 
-        file = paste(directory, "RPI5_Regression.txt", sep="/"), append = TRUE)
-  capture.output(summary(NQRPI5_model), file = paste(directory, "RPI5_Regression.txt", sep="/"), append = TRUE)
+        file = paste(directory, filename, sep="/"), append = TRUE)
+  capture.output(summary(NQRPI5_model), file = paste(directory, filename, sep="/"), append = TRUE)
   
   
   # Regression analysis with RVOL as dependent
@@ -469,16 +527,17 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
                  data = dataset, na.action=na.omit)
   
   # Save the regression results
+  filename <- paste("RVOL_Regression", postfix, ".txt", sep="")
   write("RVOL (RELATIVE RANGE) REGRESSION\n==================================================", 
-        file = paste(directory, "RVOL_Regression.txt", sep="/"))
-  capture.output(summary(RVOL_model), file = paste(directory, "RVOL_Regression.txt", sep="/"), append = TRUE)
+        file = paste(directory, filename, sep="/"))
+  capture.output(summary(RVOL_model), file = paste(directory, filename, sep="/"), append = TRUE)
 }
 
 
 
 
 # The root directory to store the regression results
-root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/23-07-2013_NA"
+root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/24-07-2013_NA"
 
 
 # Create regression analysis datasets for the mean daily volume, and RQS
@@ -514,7 +573,7 @@ summary(NQRQS_model)
 
 # Create the dataset for performing the main set of regressions
 regression_table <- gen_regression_table(daily_results, time_weight_results, final_matched)
-setkey(regression_table, time, symbol)
+setkey(regression_table, time, symbol, Q)
 
 # Combine the regression table and the HFT table
 regression_table <- merge(regression_table,
@@ -529,197 +588,220 @@ regression_table <- merge(regression_table,
 
 
 
-# Start by performing regression analysis similar to the shackling shortsellers paper
-# for RQS, RES, RPI5, and RVOL as the dependent variables
-#
-# DEPENDENT = ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap 
-#             + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-#             + nhft_s + nhft_s * ssb
-#
 
-# The two formulas to use for the shackling shortsellers regressions
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
-nhft_d * ssb + nhft_s + nhft_s * ssb"
 
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
-nhft_d * ssb + nhft_s + nhft_s * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "shackling", sep="/"))
-
-
-
-
-
-
-# Perform several regressions, using only one HFT type in the formula at a time
-# HFT_D only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_d + hft_d * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_d + hft_d * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_D", sep="/"))
-
-
-# HFT_S only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_s + hft_s * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_s + hft_s * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_S", sep="/"))
-
-
-# HFT_A only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_a + hft_a * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_a + hft_a * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A", sep="/"))
-
-
-
-
-
-
-# Perform several regressions, using the natural logarithm of the HFT data
-# HFT_D only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_d_ln + hft_d_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_d_ln + hft_d_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_D_ln", sep="/"))
-
-
-# HFT_S only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_s_ln + hft_s_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_s_ln + hft_s_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_S_ln", sep="/"))
-
-
-# HFT_A only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_a_ln + hft_a_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_a_ln + hft_a_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A_ln", sep="/"))
-
-
-
-
-
-
-# Perform several regressions, using the natural logarithm of the NHFT data
-# NHFT_D only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-nhft_d_ln + nhft_d_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-nhft_d_ln + nhft_d_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "NHFT_D_ln", sep="/"))
-
-
-# NHFT_S only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-nhft_s_ln + nhft_s_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-nhft_s_ln + nhft_s_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "NHFT_S_ln", sep="/"))
-
-
-# NHFT_A only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-nhft_a_ln + nhft_a_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-nhft_a_ln + nhft_a_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "NHFT_A_ln", sep="/"))
-
-
-
-
-
-
-# Perform several regressions, using the ratio of HFT to NHFT data
-# HFT_D only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_d_ratio + hft_d_ratio * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_d_ratio + hft_d_ratio * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_D_ratio", sep="/"))
-
-
-# HFT_S only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_s_ratio + hft_s_ratio * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_s_ratio + hft_s_ratio * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_S_ratio", sep="/"))
-
-
-# HFT_A only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_a_ratio + hft_a_ratio * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_a_ratio + hft_a_ratio * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A_ratio", sep="/"))
-
-
-
-
-
-
-# Perform several regressions, using the ratio of natural log HFT to NHFT
-# HFT_D only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_d_ratio_ln + hft_d_ratio_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_d_ratio_ln + hft_d_ratio_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_D_ratio_ln", sep="/"))
-
-
-# HFT_S only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_s_ratio_ln + hft_s_ratio_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_s_ratio_ln + hft_s_ratio_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_S_ratio_ln", sep="/"))
-
-
-# HFT_A only
-eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-hft_a_ratio_ln + hft_a_ratio_ln * ssb"
-
-eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-hft_a_ratio_ln + hft_a_ratio_ln * ssb"
-
-perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A_ratio_ln", sep="/"))
+# Execute the set of regressions for all quartiles and then for each quartile
+reg_quartiles <- c("ALL", "Q1", "Q2", "Q3", "Q4")
+
+for (quartile in reg_quartiles)
+{
+    # Get the subset of the regression table to use for the current regression
+    if (quartile == "ALL")
+    {
+      output_dir <- paste(root_dir, "default", sep="/")
+      postfix <- ""
+      regression_data <- regression_table
+    }
+    else
+    {
+      output_dir <- paste(root_dir, "quartiles", sep="/")
+      postfix <- paste(" -", quartile)
+      regression_data <- regression_table[Q == quartile]
+    }
+
+    
+    # Start by performing regression analysis similar to the shackling shortsellers paper
+    # for RQS, RES, RPI5, and RVOL as the dependent variables
+    #
+    # DEPENDENT = ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap 
+    #             + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+    #             + nhft_s + nhft_s * ssb
+    #
+    
+    # The two formulas to use for the shackling shortsellers regressions
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
+    nhft_d * ssb + nhft_s + nhft_s * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
+    nhft_d * ssb + nhft_s + nhft_s * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "shackling", sep="/"), postfix)
+    
+    
+    
+    
+    
+    
+    # Perform several regressions, using only one HFT type in the formula at a time
+    # HFT_D only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_d + hft_d * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_d + hft_d * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_D", sep="/"), postfix)
+    
+    
+    # HFT_S only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_s + hft_s * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_s + hft_s * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_S", sep="/"), postfix)
+    
+    
+    # HFT_A only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_a + hft_a * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_a + hft_a * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_A", sep="/"), postfix)
+    
+    
+    
+    
+    
+    
+    # Perform several regressions, using the natural logarithm of the HFT data
+    # HFT_D only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_d_ln + hft_d_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_d_ln + hft_d_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_D_ln", sep="/"), postfix)
+    
+    
+    # HFT_S only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_s_ln + hft_s_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_s_ln + hft_s_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_S_ln", sep="/"), postfix)
+    
+    
+    # HFT_A only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_a_ln + hft_a_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_a_ln + hft_a_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_A_ln", sep="/"), postfix)
+    
+    
+    
+    
+    
+    
+    # Perform several regressions, using the natural logarithm of the NHFT data
+    # NHFT_D only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    nhft_d_ln + nhft_d_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    nhft_d_ln + nhft_d_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "NHFT_D_ln", sep="/"), postfix)
+    
+    
+    # NHFT_S only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    nhft_s_ln + nhft_s_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    nhft_s_ln + nhft_s_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "NHFT_S_ln", sep="/"), postfix)
+    
+    
+    # NHFT_A only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    nhft_a_ln + nhft_a_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    nhft_a_ln + nhft_a_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "NHFT_A_ln", sep="/"), postfix)
+    
+    
+    
+    
+    
+    
+    # Perform several regressions, using the ratio of HFT to NHFT data
+    # HFT_D only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_d_ratio + hft_d_ratio * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_d_ratio + hft_d_ratio * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_D_ratio", sep="/"), postfix)
+    
+    
+    # HFT_S only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_s_ratio + hft_s_ratio * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_s_ratio + hft_s_ratio * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_S_ratio", sep="/"), postfix)
+    
+    
+    # HFT_A only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_a_ratio + hft_a_ratio * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_a_ratio + hft_a_ratio * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_A_ratio", sep="/"), postfix)
+    
+    
+    
+    
+    
+    
+    # Perform several regressions, using the ratio of natural log HFT to NHFT
+    # HFT_D only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_d_ratio_ln + hft_d_ratio_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_d_ratio_ln + hft_d_ratio_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_D_ratio_ln", sep="/"), postfix)
+    
+    
+    # HFT_S only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_s_ratio_ln + hft_s_ratio_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_s_ratio_ln + hft_s_ratio_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_S_ratio_ln", sep="/"), postfix)
+    
+    
+    # HFT_A only
+    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+    hft_a_ratio_ln + hft_a_ratio_ln * ssb"
+    
+    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+    hft_a_ratio_ln + hft_a_ratio_ln * ssb"
+    
+    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_A_ratio_ln", sep="/"), postfix)
+}
 
