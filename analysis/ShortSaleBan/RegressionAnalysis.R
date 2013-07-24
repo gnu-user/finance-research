@@ -357,6 +357,21 @@ gen_HFT_table <- function(dataset)
   results[hft_a < 0, hft_a_ln := (-1 * log(abs(hft_a)))]
   
   
+  # Add additional columns for the natural log of the NHFT data, where it is computed as follows:
+  # if value positive: ln(value), if value negative: -1 * ln(abs(value)), if value 0: 0
+  results[nhft_d > 0, nhft_d_ln := log(nhft_d)]
+  results[nhft_d == 0, nhft_d_ln := 0]
+  results[nhft_d < 0, nhft_d_ln := (-1 * log(abs(nhft_d)))]
+  
+  results[nhft_s > 0, nhft_s_ln := log(nhft_s)]
+  results[nhft_s == 0, nhft_s_ln := 0]
+  results[nhft_s < 0, nhft_s_ln := (-1 * log(abs(nhft_s)))]
+  
+  results[nhft_a > 0, nhft_a_ln := log(nhft_a)]
+  results[nhft_a == 0, nhft_a_ln := 0]
+  results[nhft_a < 0, nhft_a_ln := (-1 * log(abs(nhft_a)))]
+  
+  
   # Add additional columns for the ratio of HFT to NHFT data  
   results[nhft_d != 0, hft_d_ratio := (hft_d / nhft_d)]
   results[nhft_d == 0, hft_d_ratio := 0]
@@ -366,6 +381,17 @@ gen_HFT_table <- function(dataset)
   
   results[nhft_a != 0, hft_a_ratio := (hft_a / nhft_a)]
   results[nhft_a == 0, hft_a_ratio := 0]
+  
+  
+  # Add additional columns for the ratio of natural logarithm HFT to NHFT
+  results[nhft_d != 0, hft_d_ratio_ln := (hft_d_ln / nhft_d_ln)]
+  results[nhft_d == 0, hft_d_ratio_ln := 0]
+  
+  results[nhft_s != 0, hft_s_ratio_ln := (hft_s_ln / nhft_s_ln)]
+  results[nhft_s == 0, hft_s_ratio_ln := 0]
+  
+  results[nhft_a != 0, hft_a_ratio_ln := (hft_a_ln / nhft_a_ln)]
+  results[nhft_a == 0, hft_a_ratio_ln := 0]
   
   
   # Set the RQS and ban dummy
@@ -452,7 +478,7 @@ perform_regression <- function(dataset, formula, rvol_formula, directory)
 
 
 # The root directory to store the regression results
-root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/22-07-2013_NA"
+root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/23-07-2013_NA"
 
 
 # Create regression analysis datasets for the mean daily volume, and RQS
@@ -495,7 +521,10 @@ regression_table <- merge(regression_table,
                           HFT_table[, 
                                    list(hft_d, hft_s, hft_a, hft_d_short, hft_s_short, hft_a_short, 
                                         nhft_d, nhft_s, nhft_a, nhft_d_short, nhft_s_short, nhft_a_short,
-                                        hft_d_ln, hft_s_ln, hft_a_ln, hft_d_ratio, hft_s_ratio, hft_a_ratio), 
+                                        hft_d_ln, hft_s_ln, hft_a_ln, 
+                                        nhft_d_ln, nhft_s_ln, nhft_a_ln,
+                                        hft_d_ratio, hft_s_ratio, hft_a_ratio,
+                                        hft_d_ratio_ln, hft_s_ratio_ln, hft_a_ratio_ln), 
                                    by="time,symbol"])
 
 
@@ -594,6 +623,41 @@ perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A_ln", 
 
 
 
+# Perform several regressions, using the natural logarithm of the NHFT data
+# NHFT_D only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+nhft_d_ln + nhft_d_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+nhft_d_ln + nhft_d_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "NHFT_D_ln", sep="/"))
+
+
+# NHFT_S only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+nhft_s_ln + nhft_s_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+nhft_s_ln + nhft_s_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "NHFT_S_ln", sep="/"))
+
+
+# NHFT_A only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+nhft_a_ln + nhft_a_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+nhft_a_ln + nhft_a_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "NHFT_A_ln", sep="/"))
+
+
+
+
+
+
 # Perform several regressions, using the ratio of HFT to NHFT data
 # HFT_D only
 eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
@@ -623,3 +687,39 @@ eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap +
 hft_a_ratio + hft_a_ratio * ssb"
 
 perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A_ratio", sep="/"))
+
+
+
+
+
+
+# Perform several regressions, using the ratio of natural log HFT to NHFT
+# HFT_D only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_d_ratio_ln + hft_d_ratio_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_d_ratio_ln + hft_d_ratio_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_D_ratio_ln", sep="/"))
+
+
+# HFT_S only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_s_ratio_ln + hft_s_ratio_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_s_ratio_ln + hft_s_ratio_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_S_ratio_ln", sep="/"))
+
+
+# HFT_A only
+eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+hft_a_ratio_ln + hft_a_ratio_ln * ssb"
+
+eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+hft_a_ratio_ln + hft_a_ratio_ln * ssb"
+
+perform_regression(regression_table, eqn, eqn_RVOL, paste(root_dir, "HFT_A_ratio_ln", sep="/"))
+
