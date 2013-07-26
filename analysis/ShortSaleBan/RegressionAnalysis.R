@@ -24,6 +24,7 @@
 library(stringr)
 library(xts)
 library(data.table)
+library(quantreg)
 
 # Wrapper for the built-in lm() method to display the actual formula used in the
 # case where the formula passed to lm() is represented as a string in a variable
@@ -41,7 +42,7 @@ lm <- function(...)
 # analysis on stocks added to the original banlist. 
 # Daily_data, is the daily summary statistics, time_weight_data, which contains the time-weighted 
 # RQS data and matches which contains the matches.
-gen_dataset_orig <- function(daily_data, time_weight_data, matches)
+gen_dataset_hft <- function(daily_data, time_weight_data, matches)
 {
   # Get the list of banned symbols
   ban_date <- as_date("2008-09-19")
@@ -54,8 +55,8 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
                       v2=c("HN", "NH", "NH", "HN"))
   setkey(types, type)
   
-  # ShortSale status 
-  short_status <- c(TRUE,FALSE)
+  # ShortSale status, NA means HFT/NHFT for both non-shortsale and shortsale
+  short_status <- c(TRUE,FALSE, NA)
   
   
   # For each banned symbol get the match and calculate the differences of the variables
@@ -67,7 +68,18 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
       {
         matched <- matches[ban_symbol]$match
         
-        if (status)
+        if (is.na(status))
+        {
+          daily_volume <- daily_data[symbol == ban_symbol & type %in% types[entry][,c(v1,v2)],
+                                     list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
+          
+          daily_volume <- merge(daily_volume, 
+                                daily_data[symbol == matched & type %in% types[entry][,c(v1,v2)],
+                                           list(match_sum_vol=sum(sum_vol)), by="time"],
+                                by="time", all.x=TRUE)
+          
+        }
+        else
         {
           daily_volume <- daily_data[symbol == ban_symbol & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
                                list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
@@ -77,16 +89,7 @@ gen_dataset_orig <- function(daily_data, time_weight_data, matches)
                                            list(match_sum_vol=sum(sum_vol)), by="time"],
                                 by="time", all.x=TRUE)
         }
-        else
-        {
-          daily_volume <- daily_data[symbol == ban_symbol & type %in% types[entry][,c(v1,v2)],
-                                     list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
-          
-          daily_volume <- merge(daily_volume, 
-                                daily_data[symbol == matched & type %in% types[entry][,c(v1,v2)],
-                                           list(match_sum_vol=sum(sum_vol)), by="time"],
-                                by="time", all.x=TRUE)
-        }
+        
         
         #daily_volume[is.na(ban_sum_vol), ban_sum_vol := 0]
         #daily_volume[is.na(match_sum_vol), match_sum_vol := 0]
@@ -333,11 +336,12 @@ gen_HFT_table <- function(dataset)
   results <- dataset[, list(symbol=unique(symbol)), by=time]
   setkey(results, time, symbol)
   
+  
   # Set the volume for hft and non-hft, shortsale and non-shortsale data
   results <- merge(results, 
-                   dataset[type == "HFT_D" & shortsale == FALSE, list(hft_d=sum_vol), by="time,symbol"], all.x=TRUE)
+                   dataset[type == "HFT_D" & is.na(shortsale), list(hft_d=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
-                   dataset[type == "HFT_S" & shortsale == FALSE, list(hft_s=sum_vol), by="time,symbol"], all.x=TRUE)
+                   dataset[type == "HFT_S" & is.na(shortsale), list(hft_s=sum_vol), by="time,symbol"], all.x=TRUE)
   
   # Set any entries that are NA to 0
   #results[is.na(hft_d), hft_d := 0]
@@ -347,6 +351,21 @@ gen_HFT_table <- function(dataset)
   results[!is.na(hft_d) & !is.na(hft_s), hft_a := (hft_d + hft_s)]
   results[!is.na(hft_d) & is.na(hft_s), hft_a := hft_d]
   results[is.na(hft_d) & !is.na(hft_s), hft_a := hft_s]
+  
+  
+  results <- merge(results, 
+                   dataset[type == "HFT_D" & shortsale == FALSE, list(hft_d_long=sum_vol), by="time,symbol"], all.x=TRUE)
+  results <- merge(results, 
+                   dataset[type == "HFT_S" & shortsale == FALSE, list(hft_s_long=sum_vol), by="time,symbol"], all.x=TRUE)
+  
+  # Set any entries that are NA to 0
+  #results[is.na(hft_d_long), hft_d_long := 0]
+  #results[is.na(hft_s_long), hft_s_long := 0]
+  
+  # Calculate the combined volume for supply and demand
+  results[!is.na(hft_d_long) & !is.na(hft_s_long), hft_a_long := (hft_d_long + hft_s_long)]
+  results[!is.na(hft_d_long) & is.na(hft_s_long), hft_a_long := hft_d_long]
+  results[is.na(hft_d_long) & !is.na(hft_s_long), hft_a_long := hft_s_long]
   
   
   results <- merge(results, 
@@ -364,10 +383,12 @@ gen_HFT_table <- function(dataset)
   results[is.na(hft_d_short) & !is.na(hft_s_short), hft_a_short := hft_s_short]
   
   
+  
+  
   results <- merge(results, 
-                   dataset[type == "NHFT_D" & shortsale == FALSE, list(nhft_d=sum_vol), by="time,symbol"], all.x=TRUE)
+                   dataset[type == "NHFT_D" & is.na(shortsale), list(nhft_d=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
-                   dataset[type == "NHFT_S" & shortsale == FALSE, list(nhft_s=sum_vol), by="time,symbol"], all.x=TRUE)
+                   dataset[type == "NHFT_S" & is.na(shortsale), list(nhft_s=sum_vol), by="time,symbol"], all.x=TRUE)
   
   # Set any entries that are NA to 0
   #results[is.na(nhft_d), nhft_d := 0]
@@ -377,6 +398,21 @@ gen_HFT_table <- function(dataset)
   results[!is.na(nhft_d) & !is.na(nhft_s), nhft_a := (nhft_d + nhft_s)]
   results[!is.na(nhft_d) & is.na(nhft_s), nhft_a := nhft_d]
   results[is.na(nhft_d) & !is.na(nhft_s), nhft_a := nhft_s]
+  
+  
+  results <- merge(results, 
+                   dataset[type == "NHFT_D" & shortsale == FALSE, list(nhft_d_long=sum_vol), by="time,symbol"], all.x=TRUE)
+  results <- merge(results, 
+                   dataset[type == "NHFT_S" & shortsale == FALSE, list(nhft_s_long=sum_vol), by="time,symbol"], all.x=TRUE)
+  
+  # Set any entries that are NA to 0
+  #results[is.na(nhft_d_long), nhft_d_long := 0]
+  #results[is.na(nhft_s_long), nhft_s_long := 0]
+  
+  # Calculate the combined volume for supply and demand
+  results[!is.na(nhft_d_long) & !is.na(nhft_s_long), nhft_a_long := (nhft_d_long + nhft_s_long)]
+  results[!is.na(nhft_d_long) & is.na(nhft_s_long), nhft_a_long := nhft_d_long]
+  results[is.na(nhft_d_long) & !is.na(nhft_s_long), nhft_a_long := nhft_s_long]
   
   
   results <- merge(results, 
@@ -393,6 +429,7 @@ gen_HFT_table <- function(dataset)
   results[!is.na(nhft_d_short) & !is.na(nhft_s_short), nhft_a_short := (nhft_d_short + nhft_s_short)]
   results[!is.na(nhft_d_short) & is.na(nhft_s_short), nhft_a_short := nhft_d_short]
   results[is.na(nhft_d_short) & !is.na(nhft_s_short), nhft_a_short := nhft_s_short]
+  
   
   
   
@@ -448,9 +485,119 @@ gen_HFT_table <- function(dataset)
   results[nhft_a == 0, hft_a_ratio_ln := 0]
   
   
+  
+  
+  # Add additional columns for the natural log of the HFT LONG data, where it is computed as follows:
+  # if value positive: ln(value), if value negative: -1 * ln(abs(value)), if value 0: 0
+  results[hft_d_long > 0, hft_d_long_ln := log(hft_d_long)]
+  results[hft_d_long == 0, hft_d_long_ln := 0]
+  results[hft_d_long < 0, hft_d_long_ln := (-1 * log(abs(hft_d_long)))]
+  
+  results[hft_s_long > 0, hft_s_long_ln := log(hft_s_long)]
+  results[hft_s_long == 0, hft_s_long_ln := 0]
+  results[hft_s_long < 0, hft_s_long_ln := (-1 * log(abs(hft_s_long)))]
+  
+  results[hft_a_long > 0, hft_a_long_ln := log(hft_a_long)]
+  results[hft_a_long == 0, hft_a_long_ln := 0]
+  results[hft_a_long < 0, hft_a_long_ln := (-1 * log(abs(hft_a_long)))]
+  
+  
+  # Add additional columns for the natural log of the NHFT data, where it is computed as follows:
+  # if value positive: ln(value), if value negative: -1 * ln(abs(value)), if value 0: 0
+  results[nhft_d_long > 0, nhft_d_long_ln := log(nhft_d_long)]
+  results[nhft_d_long == 0, nhft_d_long_ln := 0]
+  results[nhft_d_long < 0, nhft_d_long_ln := (-1 * log(abs(nhft_d_long)))]
+  
+  results[nhft_s_long > 0, nhft_s_long_ln := log(nhft_s_long)]
+  results[nhft_s_long == 0, nhft_s_long_ln := 0]
+  results[nhft_s_long < 0, nhft_s_long_ln := (-1 * log(abs(nhft_s_long)))]
+  
+  results[nhft_a_long > 0, nhft_a_long_ln := log(nhft_a_long)]
+  results[nhft_a_long == 0, nhft_a_long_ln := 0]
+  results[nhft_a_long < 0, nhft_a_long_ln := (-1 * log(abs(nhft_a_long)))]
+  
+  
+  # Add additional columns for the ratio of HFT to NHFT data  
+  results[nhft_d_long != 0, hft_d_long_ratio := (hft_d_long / nhft_d_long)]
+  results[nhft_d_long == 0, hft_d_long_ratio := 0]
+  
+  results[nhft_s_long != 0, hft_s_long_ratio := (hft_s_long / nhft_s_long)]
+  results[nhft_s_long == 0, hft_s_long_ratio := 0]
+  
+  results[nhft_a_long != 0, hft_a_long_ratio := (hft_a_long / nhft_a_long)]
+  results[nhft_a_long == 0, hft_a_long_ratio := 0]
+  
+  
+  # Add additional columns for the ratio of natural logarithm HFT to NHFT
+  results[nhft_d_long != 0, hft_d_long_ratio_ln := (hft_d_long_ln / nhft_d_long_ln)]
+  results[nhft_d_long == 0, hft_d_long_ratio_ln := 0]
+  
+  results[nhft_s_long != 0, hft_s_long_ratio_ln := (hft_s_long_ln / nhft_s_long_ln)]
+  results[nhft_s_long == 0, hft_s_long_ratio_ln := 0]
+  
+  results[nhft_a_long != 0, hft_a_long_ratio_ln := (hft_a_long_ln / nhft_a_long_ln)]
+  results[nhft_a_long == 0, hft_a_long_ratio_ln := 0]
+  
+  
+  
+  
+  # Add additional columns for the natural log of the HFT SHORT data, where it is computed as follows:
+  # if value positive: ln(value), if value negative: -1 * ln(abs(value)), if value 0: 0
+  results[hft_d_short > 0, hft_d_short_ln := log(hft_d_short)]
+  results[hft_d_short == 0, hft_d_short_ln := 0]
+  results[hft_d_short < 0, hft_d_short_ln := (-1 * log(abs(hft_d_short)))]
+  
+  results[hft_s_short > 0, hft_s_short_ln := log(hft_s_short)]
+  results[hft_s_short == 0, hft_s_short_ln := 0]
+  results[hft_s_short < 0, hft_s_short_ln := (-1 * log(abs(hft_s_short)))]
+  
+  results[hft_a_short > 0, hft_a_short_ln := log(hft_a_short)]
+  results[hft_a_short == 0, hft_a_short_ln := 0]
+  results[hft_a_short < 0, hft_a_short_ln := (-1 * log(abs(hft_a_short)))]
+  
+  
+  # Add additional columns for the natural log of the NHFT data, where it is computed as follows:
+  # if value positive: ln(value), if value negative: -1 * ln(abs(value)), if value 0: 0
+  results[nhft_d_short > 0, nhft_d_short_ln := log(nhft_d_short)]
+  results[nhft_d_short == 0, nhft_d_short_ln := 0]
+  results[nhft_d_short < 0, nhft_d_short_ln := (-1 * log(abs(nhft_d_short)))]
+  
+  results[nhft_s_short > 0, nhft_s_short_ln := log(nhft_s_short)]
+  results[nhft_s_short == 0, nhft_s_short_ln := 0]
+  results[nhft_s_short < 0, nhft_s_short_ln := (-1 * log(abs(nhft_s_short)))]
+  
+  results[nhft_a_short > 0, nhft_a_short_ln := log(nhft_a_short)]
+  results[nhft_a_short == 0, nhft_a_short_ln := 0]
+  results[nhft_a_short < 0, nhft_a_short_ln := (-1 * log(abs(nhft_a_short)))]
+  
+  
+  # Add additional columns for the ratio of HFT to NHFT data  
+  results[nhft_d_short != 0, hft_d_short_ratio := (hft_d_short / nhft_d_short)]
+  results[nhft_d_short == 0, hft_d_short_ratio := 0]
+  
+  results[nhft_s_short != 0, hft_s_short_ratio := (hft_s_short / nhft_s_short)]
+  results[nhft_s_short == 0, hft_s_short_ratio := 0]
+  
+  results[nhft_a_short != 0, hft_a_short_ratio := (hft_a_short / nhft_a_short)]
+  results[nhft_a_short == 0, hft_a_short_ratio := 0]
+  
+  
+  # Add additional columns for the ratio of natural logarithm HFT to NHFT
+  results[nhft_d_short != 0, hft_d_short_ratio_ln := (hft_d_short_ln / nhft_d_short_ln)]
+  results[nhft_d_short == 0, hft_d_short_ratio_ln := 0]
+  
+  results[nhft_s_short != 0, hft_s_short_ratio_ln := (hft_s_short_ln / nhft_s_short_ln)]
+  results[nhft_s_short == 0, hft_s_short_ratio_ln := 0]
+  
+  results[nhft_a_short != 0, hft_a_short_ratio_ln := (hft_a_short_ln / nhft_a_short_ln)]
+  results[nhft_a_short == 0, hft_a_short_ratio_ln := 0]
+  
+  
+  
+  
   # Set the RQS and ban dummy
-  results <- merge(results, 
-                   unique(dataset[, list(NRQS, NQRQS, ssb), by="time,symbol"]))
+  #results <- merge(results, 
+  #                 unique(dataset[, list(NRQS, NQRQS, ssb), by="time,symbol"]))
   
   
   # Set any entries that are NA to 0
@@ -465,9 +612,10 @@ gen_HFT_table <- function(dataset)
 # given the formula for the indepedent variables and the dataset provided. The results 
 # of the regression are saved to text files in the directory provided and the postfix 
 # is added to each file name if provided.
-perform_regression <- function(dataset, formula, rvol_formula, directory, postfix)
+perform_regression <- function(dataset, formula, rvol_formula, directory, subdir, postfix)
 {
   # Create the directory for storing the results if it does not already exist
+  directory <- paste(directory, subdir, sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   
   
@@ -534,14 +682,88 @@ perform_regression <- function(dataset, formula, rvol_formula, directory, postfi
 }
 
 
+# Performs regression analysis for RQS, RES, RPI5, and RVOL as the dependent variables 
+# given the formula for the indepedent variables and the dataset provided. The results 
+# of the regression are saved to text files in the directory provided and the postfix 
+# is added to each file name if provided.
+perform_quantile_regression <- function(dataset, formula, rvol_formula, quantile, directory, subdir, postfix)
+{
+  # Create the directory for storing the results if it does not already exist
+  directory <- paste(directory, subdir, sep="/")
+  dir.create(directory, showWarnings = FALSE, recursive = TRUE)
+  
+  
+  # Regression analysis with RQS as dependent
+  NRQS_model=rq(formula = as.formula(paste("NRQS", formula, sep=" ~ ")), 
+                tau=quantile, data = dataset, na.action=na.omit)
+  
+  NQRQS_model=rq(formula = as.formula(paste("NQRQS", formula, sep=" ~ ")), 
+                 tau=quantile, data = dataset, na.action=na.omit)
+  
+  # Save the regression results
+  filename <- paste("RQS_Regression", postfix, ".txt", sep="")
+  write("NATIONAL RQS REGRESSION\n==================================================", 
+        file = paste(directory, filename, sep="/"))
+  capture.output(summary(NRQS_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write("\n\n\n\n\n\n\nNASDAQ RQS REGRESSION\n==================================================", 
+        file = paste(directory, filename, sep="/"), append = TRUE)
+  capture.output(summary(NQRQS_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  
+  
+  # Regression analysis with RES as dependent
+  NRES_model=rq(formula = as.formula(paste("NRES", formula, sep=" ~ ")), 
+                tau=quantile, data = dataset, na.action=na.omit)
+  
+  NQRES_model=rq(formula = as.formula(paste("NQRES", formula, sep=" ~ ")), 
+                 tau=quantile, data = dataset, na.action=na.omit)
+  
+  # Save the regression results
+  filename <- paste("RES_Regression", postfix, ".txt", sep="")
+  write("NATIONAL RES REGRESSION\n==================================================", 
+        file = paste(directory, filename, sep="/"))
+  capture.output(summary(NRES_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write("\n\n\n\n\n\n\nNASDAQ RES REGRESSION\n==================================================", 
+        file = paste(directory, filename, sep="/"), append = TRUE)
+  capture.output(summary(NQRES_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  
+  
+  # Regression analysis with RPI5 as dependent
+  NRPI5_model=lm(formula = as.formula(paste("NRPI5", formula, sep=" ~ ")), 
+                 tau=quantile, data = dataset, na.action=na.omit)
+  
+  NQRPI5_model=lm(formula = as.formula(paste("NQRPI5", formula, sep=" ~ ")), 
+                  tau=quantile, data = dataset, na.action=na.omit)
+  
+  # Save the regression results
+  filename <- paste("RPI5_Regression", postfix, ".txt", sep="")
+  write("NATIONAL RPI5 REGRESSION\n==================================================", 
+        file = paste(directory, filename, sep="/"))
+  capture.output(summary(NRPI5_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write("\n\n\n\n\n\n\nNASDAQ RPI5 REGRESSION\n==================================================", 
+        file = paste(directory, filename, sep="/"), append = TRUE)
+  capture.output(summary(NQRPI5_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  
+  
+  # Regression analysis with RVOL as dependent
+  RVOL_model=lm(formula = as.formula(paste("rel_range", rvol_formula, sep=" ~ ")), 
+                tau=quantile, data = dataset, na.action=na.omit)
+  
+  # Save the regression results
+  filename <- paste("RVOL_Regression", postfix, ".txt", sep="")
+  write("RVOL (RELATIVE RANGE) REGRESSION\n==================================================", 
+        file = paste(directory, filename, sep="/"))
+  capture.output(summary(RVOL_model), file = paste(directory, filename, sep="/"), append = TRUE)
+}
+
+
 
 
 # The root directory to store the regression results
-root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/24-07-2013_NA"
+root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/25-07-2013_quantile"
 
 
 # Create regression analysis datasets for the mean daily volume, and RQS
-dataset_original <- gen_dataset_orig(daily_results, time_weight_results, final_matched)
+dataset_original <- gen_dataset_hft(daily_results, time_weight_results, final_matched)
 
 
 # Perform regression analysis for the orginal banned stocks with RQS as dependent and HFT volume as independent
@@ -578,230 +800,261 @@ setkey(regression_table, time, symbol, Q)
 # Combine the regression table and the HFT table
 regression_table <- merge(regression_table,
                           HFT_table[, 
-                                   list(hft_d, hft_s, hft_a, hft_d_short, hft_s_short, hft_a_short, 
-                                        nhft_d, nhft_s, nhft_a, nhft_d_short, nhft_s_short, nhft_a_short,
+                                   list(hft_d, hft_s, hft_a, hft_d_long, hft_s_long, hft_a_long, hft_d_short, hft_s_short, hft_a_short, 
+                                        nhft_d, nhft_s, nhft_a, nhft_d_long, nhft_s_long, nhft_a_long, nhft_d_short, nhft_s_short, nhft_a_short,
                                         hft_d_ln, hft_s_ln, hft_a_ln, 
                                         nhft_d_ln, nhft_s_ln, nhft_a_ln,
                                         hft_d_ratio, hft_s_ratio, hft_a_ratio,
-                                        hft_d_ratio_ln, hft_s_ratio_ln, hft_a_ratio_ln), 
+                                        hft_d_ratio_ln, hft_s_ratio_ln, hft_a_ratio_ln,
+                                        
+                                        hft_d_long_ln, hft_s_long_ln, hft_a_long_ln, 
+                                        nhft_d_long_ln, nhft_s_long_ln, nhft_a_long_ln,
+                                        hft_d_long_ratio, hft_s_long_ratio, hft_a_long_ratio,
+                                        hft_d_long_ratio_ln, hft_s_long_ratio_ln, hft_a_long_ratio_ln,
+                                        
+                                        hft_d_short_ln, hft_s_short_ln, hft_a_short_ln, 
+                                        nhft_d_short_ln, nhft_s_short_ln, nhft_a_short_ln,
+                                        hft_d_short_ratio, hft_s_short_ratio, hft_a_short_ratio,
+                                        hft_d_short_ratio_ln, hft_s_short_ratio_ln, hft_a_short_ratio_ln), 
                                    by="time,symbol"])
 
 
 
 
 
+# Execute the set of regressions for each HFT type (long + short, long, short)
+hft_types <- data.table(type=c("long_short","long", "short"), 
+                        var=c("\\1", "\\1_long", "\\1_short"))
+setkey(hft_types, type)
+
 # Execute the set of regressions for all quartiles and then for each quartile
 reg_quartiles <- c("ALL", "Q1", "Q2", "Q3", "Q4")
 
-for (quartile in reg_quartiles)
+for (entry in hft_types[, type])
 {
-    # Get the subset of the regression table to use for the current regression
-    if (quartile == "ALL")
+    output_dir <- paste(root_dir, entry, sep="/")
+    
+    for (quartile in reg_quartiles)
     {
-      output_dir <- paste(root_dir, "default", sep="/")
-      postfix <- ""
-      regression_data <- regression_table
+        # Get the subset of the regression table to use for the current regression
+        if (quartile == "ALL")
+        {
+          subdir <- "default"
+          postfix <- ""
+          regression_data <- regression_table
+        }
+        else
+        {
+          subdir <- "quartiles"
+          postfix <- paste(" -", quartile)
+          regression_data <- regression_table[Q == quartile]
+        }
+    
+        
+        # Start by performing regression analysis similar to the shackling shortsellers paper
+        # for RQS, RES, RPI5, and RVOL as the dependent variables
+        #
+        # DEPENDENT = ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap 
+        #             + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
+        #             + nhft_s + nhft_s * ssb
+        #
+        
+        # The two formulas to use for the shackling shortsellers regressions
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
+        nhft_d * ssb + nhft_s + nhft_s * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
+        nhft_d * ssb + nhft_s + nhft_s * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "shackling", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "shackling", postfix)
+        
+        
+        
+        
+        
+        # Perform several regressions, using only one HFT type in the formula at a time
+        # HFT_D only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_d + hft_d * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_d + hft_d * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D", postfix)
+        
+        
+        # HFT_S only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_s + hft_s * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_s + hft_s * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S", postfix)
+        
+        
+        # HFT_A only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_a + hft_a * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_a + hft_a * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A", postfix)
+        
+        
+        
+        
+        
+        # Perform several regressions, using the natural logarithm of the HFT data
+        # HFT_D only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_d_ln + hft_d_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_d_ln + hft_d_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ln", postfix)
+        
+        
+        # HFT_S only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_s_ln + hft_s_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_s_ln + hft_s_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ln", postfix)
+        
+        
+        # HFT_A only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_a_ln + hft_a_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_a_ln + hft_a_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ln", postfix)
+        
+        
+        
+        
+        
+        # Perform several regressions, using the natural logarithm of the NHFT data
+        # NHFT_D only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        nhft_d_ln + nhft_d_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        nhft_d_ln + nhft_d_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_D_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_D_ln", postfix)
+        
+        
+        # NHFT_S only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        nhft_s_ln + nhft_s_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        nhft_s_ln + nhft_s_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_S_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_S_ln", postfix)
+        
+        
+        # NHFT_A only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        nhft_a_ln + nhft_a_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        nhft_a_ln + nhft_a_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_A_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_A_ln", postfix)
+        
+        
+        
+        
+        
+        # Perform several regressions, using the ratio of HFT to NHFT data
+        # HFT_D only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_d_ratio + hft_d_ratio * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_d_ratio + hft_d_ratio * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ratio", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ratio", postfix)
+        
+        
+        # HFT_S only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_s_ratio + hft_s_ratio * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_s_ratio + hft_s_ratio * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ratio", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ratio", postfix)
+        
+        
+        # HFT_A only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_a_ratio + hft_a_ratio * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_a_ratio + hft_a_ratio * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ratio", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ratio", postfix)
+        
+        
+        
+        
+        
+        # Perform several regressions, using the ratio of natural log HFT to NHFT
+        # HFT_D only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_d_ratio_ln + hft_d_ratio_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_d_ratio_ln + hft_d_ratio_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ratio_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ratio_ln", postfix)
+        
+        
+        # HFT_S only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_s_ratio_ln + hft_s_ratio_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_s_ratio_ln + hft_s_ratio_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ratio_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ratio_ln", postfix)
+        
+        
+        # HFT_A only
+        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        hft_a_ratio_ln + hft_a_ratio_ln * ssb")
+        
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        hft_a_ratio_ln + hft_a_ratio_ln * ssb")
+        
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ratio_ln", postfix)
+        perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ratio_ln", postfix)
     }
-    else
-    {
-      output_dir <- paste(root_dir, "quartiles", sep="/")
-      postfix <- paste(" -", quartile)
-      regression_data <- regression_table[Q == quartile]
-    }
-
-    
-    # Start by performing regression analysis similar to the shackling shortsellers paper
-    # for RQS, RES, RPI5, and RVOL as the dependent variables
-    #
-    # DEPENDENT = ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap 
-    #             + hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + nhft_d * ssb
-    #             + nhft_s + nhft_s * ssb
-    #
-    
-    # The two formulas to use for the shackling shortsellers regressions
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
-    nhft_d * ssb + nhft_s + nhft_s * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
-    nhft_d * ssb + nhft_s + nhft_s * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "shackling", sep="/"), postfix)
-    
-    
-    
-    
-    
-    
-    # Perform several regressions, using only one HFT type in the formula at a time
-    # HFT_D only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_d + hft_d * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_d + hft_d * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_D", sep="/"), postfix)
-    
-    
-    # HFT_S only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_s + hft_s * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_s + hft_s * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_S", sep="/"), postfix)
-    
-    
-    # HFT_A only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_a + hft_a * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_a + hft_a * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_A", sep="/"), postfix)
-    
-    
-    
-    
-    
-    
-    # Perform several regressions, using the natural logarithm of the HFT data
-    # HFT_D only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_d_ln + hft_d_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_d_ln + hft_d_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_D_ln", sep="/"), postfix)
-    
-    
-    # HFT_S only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_s_ln + hft_s_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_s_ln + hft_s_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_S_ln", sep="/"), postfix)
-    
-    
-    # HFT_A only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_a_ln + hft_a_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_a_ln + hft_a_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_A_ln", sep="/"), postfix)
-    
-    
-    
-    
-    
-    
-    # Perform several regressions, using the natural logarithm of the NHFT data
-    # NHFT_D only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    nhft_d_ln + nhft_d_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    nhft_d_ln + nhft_d_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "NHFT_D_ln", sep="/"), postfix)
-    
-    
-    # NHFT_S only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    nhft_s_ln + nhft_s_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    nhft_s_ln + nhft_s_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "NHFT_S_ln", sep="/"), postfix)
-    
-    
-    # NHFT_A only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    nhft_a_ln + nhft_a_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    nhft_a_ln + nhft_a_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "NHFT_A_ln", sep="/"), postfix)
-    
-    
-    
-    
-    
-    
-    # Perform several regressions, using the ratio of HFT to NHFT data
-    # HFT_D only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_d_ratio + hft_d_ratio * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_d_ratio + hft_d_ratio * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_D_ratio", sep="/"), postfix)
-    
-    
-    # HFT_S only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_s_ratio + hft_s_ratio * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_s_ratio + hft_s_ratio * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_S_ratio", sep="/"), postfix)
-    
-    
-    # HFT_A only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_a_ratio + hft_a_ratio * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_a_ratio + hft_a_ratio * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_A_ratio", sep="/"), postfix)
-    
-    
-    
-    
-    
-    
-    # Perform several regressions, using the ratio of natural log HFT to NHFT
-    # HFT_D only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_d_ratio_ln + hft_d_ratio_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_d_ratio_ln + hft_d_ratio_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_D_ratio_ln", sep="/"), postfix)
-    
-    
-    # HFT_S only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_s_ratio_ln + hft_s_ratio_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_s_ratio_ln + hft_s_ratio_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_S_ratio_ln", sep="/"), postfix)
-    
-    
-    # HFT_A only
-    eqn = "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
-    hft_a_ratio_ln + hft_a_ratio_ln * ssb"
-    
-    eqn_RVOL = "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
-    hft_a_ratio_ln + hft_a_ratio_ln * ssb"
-    
-    perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "HFT_A_ratio_ln", sep="/"), postfix)
 }
 
