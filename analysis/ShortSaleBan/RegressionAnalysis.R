@@ -25,8 +25,8 @@ library(stringr)
 library(xts)
 library(data.table)
 library(ggplot2)
-library(quantreg)
-library(robustbase)
+#library(quantreg)
+#library(robustbase)
 
 # Wrapper for the built-in lm() method to display the actual formula used in the
 # case where the formula passed to lm() is represented as a string in a variable
@@ -37,6 +37,104 @@ lm <- function(...)
   env <- parent.frame()
   mf$formula <- eval(mf$formula, env)
   eval(mf, env)
+}
+
+
+# Simple helper function that removes the factor entries from the regression summary output
+rm_factors <- function(output)
+{
+  clean_output <- capture.output(output)
+  clean_output <- gsub('factor\\(symbol\\).+$', NA, clean_output)
+  
+  return(clean_output[!is.na(clean_output)])
+}
+
+
+# Updates the global variable summary table containing the results of the regressions for each independent variable
+# Adds the results of the current regression to the summary table from previous regressions
+update_summary_table <- function(model, reg_name)
+{
+  regexp <- '\\(*([^ ]+?)\\)*\\s+(<*\\s*[0-9\\.\\sNAe-]+)\\s+(<*\\s*[0-9\\.\\sNAe-]+)\\s+(<*\\s*[0-9\\.\\sNAe-]+)\\s+(<*\\s*[0-9\\.\\sNAe-]+)\\s(.+)$'
+  regexp_miss <- '\\s+\\(([0-9]+)\\s+observations\\sdeleted.+$'
+  regexp_adj_r2 <- '.+Adjusted\\s+R-squared:\\s+([0-9\\.]+)\\s+$' 
+  
+  
+  for (row in rm_factors(summary(model)))
+  {
+    match <- str_match(row, regexp)
+    
+    # Get the coefficient, the estimate and the significance
+    if (!is.na(match[1]))
+    {
+      coefficient <- match[2]
+      coefficient_err <- paste(coefficient, "Std. Error", sep=" ")
+      estimate <- match[3]
+      error <- match[4]
+      significance <- match[7]
+      
+      if (coefficient == "Intercept")
+      {
+        result <- data.table(row=c(1,1), entry=c(coefficient, coefficient_err))
+      }
+      else
+      {
+        result <- data.table(row=c(2,2), entry=c(coefficient, coefficient_err))
+      }
+      result[, reg_name := c(paste(estimate, significance, sep=" "), error), with=FALSE]
+      
+      if (exists("results"))
+      {
+        results <- rbind(results, result)
+      }
+      else
+      {
+        results <- result
+      }
+    }
+
+    
+    # Get the number of observations and the number deleted (due to NAs)
+    match <- str_match(row, regexp_miss)
+    
+    if (!is.na(match[1]))
+    {
+      num_obs <- nobs(model)
+      deleted <- match[2]
+      
+      result <- data.table(row=c(3, 3), entry=c("N", "N (Deleted)"))
+      result[, reg_name := c(num_obs, deleted), with=FALSE]
+      
+      results <- rbind(results, result)
+    }
+
+    
+    # Get the Adjusted R2
+    match <- str_match(row, regexp_adj_r2)
+    
+    if (!is.na(match[1]))
+    {
+      result <- data.table(row=c(4), entry=c("Adjusted-R^2"))
+      result[, reg_name := c(match[2]), with=FALSE]
+      
+      results <- rbind(results, result)
+    }
+  }
+  
+  
+  # Merge the current results with the existing regression summary
+  if (NROW(reg_summary) > 0)
+  {
+    setkey(reg_summary, row, entry)
+    setkey(results, row, entry)
+  
+    reg_summary <<- merge(reg_summary,
+                          results, all=TRUE)
+  }
+  else
+  {
+    setkey(results, row, entry)
+    reg_summary <<- results
+  }
 }
 
 
@@ -642,11 +740,13 @@ trim_outliers <- function(dataset, trim=0.05, columns=c())
 # given the formula for the indepedent variables and the dataset provided. The results 
 # of the regression are saved to text files in the directory provided and the postfix 
 # is added to each file name if provided.
-perform_regression <- function(dataset, formula, rvol_formula, directory, subdir, postfix)
+perform_regression <- function(dataset, formula, rvol_formula, directory, subdir, hft_type, postfix)
 {
   # Create the directory for storing the results if it does not already exist
   directory <- paste(directory, subdir, sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
+  
+  base_name <- paste(hft_type, subdir, sep=" ")
   
   
   # Regression analysis with RQS as dependent
@@ -660,10 +760,14 @@ perform_regression <- function(dataset, formula, rvol_formula, directory, subdir
   filename <- paste("RQS_Regression", postfix, ".txt", sep="")
   write("NATIONAL RQS REGRESSION\n==================================================", 
          file = paste(directory, filename, sep="/"))
-  capture.output(summary(NRQS_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write(rm_factors(summary(NRQS_model)), file = paste(directory, filename, sep="/"), append = TRUE)
   write("\n\n\n\n\n\n\nNASDAQ RQS REGRESSION\n==================================================", 
         file = paste(directory, filename, sep="/"), append = TRUE)
-  capture.output(summary(NQRQS_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write(rm_factors(summary(NQRQS_model)), file = paste(directory, filename, sep="/"), append = TRUE)
+  
+  # Add the regression results to the summary
+  update_summary_table(NRQS_model, paste(base_name, " NRQS", postfix, sep=""))
+  update_summary_table(NQRQS_model, paste(base_name, " NQRQS", postfix, sep=""))
   
   
   # Regression analysis with RES as dependent
@@ -677,10 +781,14 @@ perform_regression <- function(dataset, formula, rvol_formula, directory, subdir
   filename <- paste("RES_Regression", postfix, ".txt", sep="")
   write("NATIONAL RES REGRESSION\n==================================================", 
         file = paste(directory, filename, sep="/"))
-  capture.output(summary(NRES_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write(rm_factors(summary(NRES_model)), file = paste(directory, filename, sep="/"), append = TRUE)
   write("\n\n\n\n\n\n\nNASDAQ RES REGRESSION\n==================================================", 
         file = paste(directory, filename, sep="/"), append = TRUE)
-  capture.output(summary(NQRES_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write(rm_factors(summary(NQRES_model)), file = paste(directory, filename, sep="/"), append = TRUE)
+  
+  # Add the regression results to the summary
+  update_summary_table(NRES_model, paste(base_name, " NRES", postfix, sep=""))
+  update_summary_table(NQRES_model, paste(base_name, " NQRES", postfix, sep=""))
   
   
   # Regression analysis with RPI5 as dependent
@@ -694,10 +802,14 @@ perform_regression <- function(dataset, formula, rvol_formula, directory, subdir
   filename <- paste("RPI5_Regression", postfix, ".txt", sep="")
   write("NATIONAL RPI5 REGRESSION\n==================================================", 
         file = paste(directory, filename, sep="/"))
-  capture.output(summary(NRPI5_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write(rm_factors(summary(NRPI5_model)), file = paste(directory, filename, sep="/"), append = TRUE)
   write("\n\n\n\n\n\n\nNASDAQ RPI5 REGRESSION\n==================================================", 
         file = paste(directory, filename, sep="/"), append = TRUE)
-  capture.output(summary(NQRPI5_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write(rm_factors(summary(NQRPI5_model)), file = paste(directory, filename, sep="/"), append = TRUE)
+  
+  # Add the regression results to the summary
+  update_summary_table(NRPI5_model, paste(base_name, " NRPI5", postfix, sep=""))
+  update_summary_table(NQRPI5_model, paste(base_name, " NQRPI5", postfix, sep=""))
   
   
   # Regression analysis with RVOL as dependent
@@ -708,7 +820,10 @@ perform_regression <- function(dataset, formula, rvol_formula, directory, subdir
   filename <- paste("RVOL_Regression", postfix, ".txt", sep="")
   write("RVOL (RELATIVE RANGE) REGRESSION\n==================================================", 
         file = paste(directory, filename, sep="/"))
-  capture.output(summary(RVOL_model), file = paste(directory, filename, sep="/"), append = TRUE)
+  write(rm_factors(summary(RVOL_model)), file = paste(directory, filename, sep="/"), append = TRUE)
+  
+  # Add the regression results to the summary
+  update_summary_table(RVOL_model, paste(base_name, " RVOL", postfix, sep=""))
 }
 
 
@@ -903,8 +1018,11 @@ plot_residuals <- function(dataset, formula, rvol_formula, directory, subdir, po
 
 
 # The root directory to store the regression results
-root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/29-07-2013"
+root_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/regressions/02-08-2013"
 
+
+# A global variable containing the summary results of the regressions, populated by gen_summary_table(...)
+reg_summary <- data.table()
 
 # Create regression analysis datasets for the mean daily volume, and RQS
 dataset_original <- gen_dataset_hft(daily_results, time_weight_results, final_matched)
@@ -974,9 +1092,9 @@ setkey(hft_types, type)
 # Execute the set of regressions for all quartiles and then for each quartile
 reg_quartiles <- c("ALL", "Q1", "Q2", "Q3", "Q4")
 
-for (entry in hft_types[, type])
+for (hft_type in hft_types[, type])
 {
-    output_dir <- paste(root_dir, entry, sep="/")
+    output_dir <- paste(root_dir, hft_type, sep="/")
     
     for (quartile in reg_quartiles)
     {
@@ -1006,16 +1124,16 @@ for (entry in hft_types[, type])
         #
         
         # The two formulas to use for the shackling shortsellers regressions
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
         nhft_d * ssb + nhft_s + nhft_s * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_d + hft_d * ssb + hft_s + hft_s * ssb + nhft_d + 
         nhft_d * ssb + nhft_s + nhft_s * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "shackling", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "shackling", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "shackling", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "shackling", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "shackling", postfix)
         
         
@@ -1024,36 +1142,36 @@ for (entry in hft_types[, type])
         
         # Perform several regressions, using only one HFT type in the formula at a time
         # HFT_D only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_d + hft_d * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_d + hft_d * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D", hft_type, postfix)
         
         
         # HFT_S only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_s + hft_s * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_s + hft_s * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S", hft_type, postfix)
         
         
         # HFT_A only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_a + hft_a * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_a + hft_a * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A", hft_type, postfix)
         
         
         
@@ -1061,38 +1179,38 @@ for (entry in hft_types[, type])
         
         # Perform several regressions, using the natural logarithm of the HFT data
         # HFT_D only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_d_ln + hft_d_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_d_ln + hft_d_ln * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ln", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ln", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ln", postfix)
         
         
         # HFT_S only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_s_ln + hft_s_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_s_ln + hft_s_ln * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ln", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ln", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ln", postfix)
         
         
         # HFT_A only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_a_ln + hft_a_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_a_ln + hft_a_ln * ssb")
         
-        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ln", postfix)
+        perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ln", hft_type, postfix)
         plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ln", postfix)
         
         
@@ -1101,38 +1219,38 @@ for (entry in hft_types[, type])
         
         # Perform several regressions, using the natural logarithm of the NHFT data
         # NHFT_D only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         nhft_d_ln + nhft_d_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         nhft_d_ln + nhft_d_ln * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_D_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_D_ln", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_D_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_D_ln", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_D_ln", postfix)
         
         
         # NHFT_S only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         nhft_s_ln + nhft_s_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         nhft_s_ln + nhft_s_ln * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_S_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_S_ln", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_S_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_S_ln", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_S_ln", postfix)
         
         
         # NHFT_A only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         nhft_a_ln + nhft_a_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         nhft_a_ln + nhft_a_ln * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_A_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_A_ln", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_A_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "NHFT_A_ln", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "NHFT_A_ln", postfix)
         
         
@@ -1141,36 +1259,36 @@ for (entry in hft_types[, type])
         
         # Perform several regressions, using the ratio of HFT to NHFT data
         # HFT_D only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_d_ratio + hft_d_ratio * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_d_ratio + hft_d_ratio * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ratio", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ratio", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ratio", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ratio", hft_type, postfix)
         
         
         # HFT_S only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_s_ratio + hft_s_ratio * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_s_ratio + hft_s_ratio * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ratio", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ratio", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ratio", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ratio", hft_type, postfix)
         
         
         # HFT_A only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_a_ratio + hft_a_ratio * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_a_ratio + hft_a_ratio * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ratio", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ratio", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ratio", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ratio", hft_type, postfix)
         
         
         
@@ -1178,39 +1296,45 @@ for (entry in hft_types[, type])
         
         # Perform several regressions, using the ratio of natural log HFT to NHFT
         # HFT_D only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_d_ratio_ln + hft_d_ratio_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_d_ratio_ln + hft_d_ratio_ln * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ratio_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ratio_ln", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ratio_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_D_ratio_ln", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_D_ratio_ln", postfix)
         
         
         # HFT_S only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_s_ratio_ln + hft_s_ratio_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_s_ratio_ln + hft_s_ratio_ln * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ratio_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ratio_ln", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ratio_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_S_ratio_ln", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_S_ratio_ln", postfix)
         
         
         # HFT_A only
-        eqn = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
+        eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + rel_range + vwap + 
         hft_a_ratio_ln + hft_a_ratio_ln * ssb")
         
-        eqn_RVOL = gsub('(hft_[a-z])', hft_types[entry][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
+        eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + factor(symbol) + market_cap + sum_vol + vwap + 
         hft_a_ratio_ln + hft_a_ratio_ln * ssb")
         
-        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ratio_ln", postfix)
-        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ratio_ln", postfix)
+        #perform_regression(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ratio_ln", hft_type, postfix)
+        #perform_quantile_regression(regression_data, eqn, eqn_RVOL, 0.50, paste(output_dir, "quantile_regression", subdir, sep="/"), "HFT_A_ratio_ln", hft_type, postfix)
         #plot_residuals(regression_data, eqn, eqn_RVOL, paste(output_dir, "default_regression", subdir, sep="/"), "HFT_A_ratio_ln", postfix)
     }
 }
 
+
+
+
+# Write the summary results of the regressions to file
+reg_summary[, row := NULL]
+write.csv(reg_summary, paste(root_dir, "regression_summary.csv", sep="/"), row.names = FALSE)
