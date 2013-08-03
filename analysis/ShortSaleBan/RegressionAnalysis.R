@@ -437,7 +437,7 @@ gen_HFT_table <- function(dataset)
   setkey(results, time, symbol)
   
   
-  # Set the volume for hft and non-hft, shortsale and non-shortsale data
+  # Set the volume for hft, shortsale and non-shortsale data
   results <- merge(results, 
                    dataset[type == "HFT_D" & is.na(shortsale), list(hft_d=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
@@ -485,6 +485,7 @@ gen_HFT_table <- function(dataset)
   
   
   
+  # Set the volume for non-hft, shortsale and non-shortsale data
   results <- merge(results, 
                    dataset[type == "NHFT_D" & is.na(shortsale), list(nhft_d=sum_vol), by="time,symbol"], all.x=TRUE)
   results <- merge(results, 
@@ -575,14 +576,14 @@ gen_HFT_table <- function(dataset)
   
   
   # Add additional columns for the ratio of natural logarithm HFT to NHFT
-  results[nhft_d != 0, hft_d_ratio_ln := (hft_d_ln / nhft_d_ln)]
-  results[nhft_d == 0, hft_d_ratio_ln := 0]
+  results[nhft_d_ln != 0, hft_d_ratio_ln := (hft_d_ln / nhft_d_ln)]
+  results[nhft_d_ln == 0, hft_d_ratio_ln := 0]
   
-  results[nhft_s != 0, hft_s_ratio_ln := (hft_s_ln / nhft_s_ln)]
-  results[nhft_s == 0, hft_s_ratio_ln := 0]
+  results[nhft_s_ln != 0, hft_s_ratio_ln := (hft_s_ln / nhft_s_ln)]
+  results[nhft_s_ln == 0, hft_s_ratio_ln := 0]
   
-  results[nhft_a != 0, hft_a_ratio_ln := (hft_a_ln / nhft_a_ln)]
-  results[nhft_a == 0, hft_a_ratio_ln := 0]
+  results[nhft_a_ln != 0, hft_a_ratio_ln := (hft_a_ln / nhft_a_ln)]
+  results[nhft_a_ln == 0, hft_a_ratio_ln := 0]
   
   
   
@@ -629,14 +630,14 @@ gen_HFT_table <- function(dataset)
   
   
   # Add additional columns for the ratio of natural logarithm HFT to NHFT
-  results[nhft_d_long != 0, hft_d_long_ratio_ln := (hft_d_long_ln / nhft_d_long_ln)]
-  results[nhft_d_long == 0, hft_d_long_ratio_ln := 0]
+  results[nhft_d_long_ln != 0, hft_d_long_ratio_ln := (hft_d_long_ln / nhft_d_long_ln)]
+  results[nhft_d_long_ln == 0, hft_d_long_ratio_ln := 0]
   
-  results[nhft_s_long != 0, hft_s_long_ratio_ln := (hft_s_long_ln / nhft_s_long_ln)]
-  results[nhft_s_long == 0, hft_s_long_ratio_ln := 0]
+  results[nhft_s_long_ln != 0, hft_s_long_ratio_ln := (hft_s_long_ln / nhft_s_long_ln)]
+  results[nhft_s_long_ln == 0, hft_s_long_ratio_ln := 0]
   
-  results[nhft_a_long != 0, hft_a_long_ratio_ln := (hft_a_long_ln / nhft_a_long_ln)]
-  results[nhft_a_long == 0, hft_a_long_ratio_ln := 0]
+  results[nhft_a_long_ln != 0, hft_a_long_ratio_ln := (hft_a_long_ln / nhft_a_long_ln)]
+  results[nhft_a_long_ln == 0, hft_a_long_ratio_ln := 0]
   
   
   
@@ -683,14 +684,14 @@ gen_HFT_table <- function(dataset)
   
   
   # Add additional columns for the ratio of natural logarithm HFT to NHFT
-  results[nhft_d_short != 0, hft_d_short_ratio_ln := (hft_d_short_ln / nhft_d_short_ln)]
-  results[nhft_d_short == 0, hft_d_short_ratio_ln := 0]
+  results[nhft_d_short_ln != 0, hft_d_short_ratio_ln := (hft_d_short_ln / nhft_d_short_ln)]
+  results[nhft_d_short_ln == 0, hft_d_short_ratio_ln := 0]
   
-  results[nhft_s_short != 0, hft_s_short_ratio_ln := (hft_s_short_ln / nhft_s_short_ln)]
-  results[nhft_s_short == 0, hft_s_short_ratio_ln := 0]
+  results[nhft_s_short_ln != 0, hft_s_short_ratio_ln := (hft_s_short_ln / nhft_s_short_ln)]
+  results[nhft_s_short_ln == 0, hft_s_short_ratio_ln := 0]
   
-  results[nhft_a_short != 0, hft_a_short_ratio_ln := (hft_a_short_ln / nhft_a_short_ln)]
-  results[nhft_a_short == 0, hft_a_short_ratio_ln := 0]
+  results[nhft_a_short_ln != 0, hft_a_short_ratio_ln := (hft_a_short_ln / nhft_a_short_ln)]
+  results[nhft_a_short_ln == 0, hft_a_short_ratio_ln := 0]
   
   
   
