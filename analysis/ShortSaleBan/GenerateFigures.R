@@ -260,8 +260,8 @@ gen_hft_dataset <- function(daily_data, matches)
       
       
       # Set any NA entries to 0
-      daily_volume[is.na(total_vol), total_vol := 0]
-      daily_volume[is.na(short_vol), short_vol := 0]
+      #daily_volume[is.na(total_vol), total_vol := 0]
+      #daily_volume[is.na(short_vol), short_vol := 0]
       
       
       if (exists("results"))
@@ -294,12 +294,11 @@ gen_hft_table <- function(dataset)
   results <- merge(results, 
                    dataset[type == "HFT_S", list(hft_s=total_vol), by="time,symbol"], all.x=TRUE)
   
-  # Set any entries that are NA to 0
-  results[is.na(hft_d), hft_d := 0]
-  results[is.na(hft_s), hft_s := 0]
   
   # Calculate the combined volume for HFT supply and demand
-  results[, hft_a := (hft_d + hft_s)]
+  results[!is.na(hft_d) & !is.na(hft_s), hft_a := (hft_d + hft_s)]
+  results[!is.na(hft_d) & is.na(hft_s), hft_a := hft_d]
+  results[is.na(hft_d) & !is.na(hft_s), hft_a := hft_s]
   
   
   # Set the volume for hft for supply, demand, and all for shortsale ONLY
@@ -308,13 +307,12 @@ gen_hft_table <- function(dataset)
   results <- merge(results, 
                    dataset[type == "HFT_S", list(hft_s_short=short_vol), by="time,symbol"], all.x=TRUE)
   
-  # Set any entries that are NA to 0
-  results[is.na(hft_d_short), hft_d_short := 0]
-  results[is.na(hft_s_short), hft_s_short := 0]
   
   # Calculate the combined volume for HFT supply and demand
-  results[, hft_a_short := (hft_d_short + hft_s_short)]
-  
+  results[!is.na(hft_d_short) & !is.na(hft_s_short), hft_a_short := (hft_d_short + hft_s_short)]
+  results[!is.na(hft_d_short) & is.na(hft_s_short), hft_a_short := hft_d_short]
+  results[is.na(hft_d_short) & !is.na(hft_s_short), hft_a_short := hft_s_short]
+
   
   
   
@@ -324,12 +322,11 @@ gen_hft_table <- function(dataset)
   results <- merge(results, 
                    dataset[type == "NHFT_S", list(nhft_s=total_vol), by="time,symbol"], all.x=TRUE)
   
-  # Set any entries that are NA to 0
-  results[is.na(nhft_d), nhft_d := 0]
-  results[is.na(nhft_s), nhft_s := 0]
   
   # Calculate the combined volume for NHFT supply and demand
-  results[, nhft_a := (nhft_d + nhft_s)]
+  results[!is.na(nhft_d) & !is.na(nhft_s), nhft_a := (nhft_d + nhft_s)]
+  results[!is.na(nhft_d) & is.na(nhft_s), nhft_a := nhft_d]
+  results[is.na(nhft_d) & !is.na(nhft_s), nhft_a := nhft_s]
   
   
   # Set the volume for non-hft for supply, demand, and all for shortsale ONLY
@@ -338,12 +335,11 @@ gen_hft_table <- function(dataset)
   results <- merge(results, 
                    dataset[type == "NHFT_S", list(nhft_s_short=short_vol), by="time,symbol"], all.x=TRUE)
   
-  # Set any entries that are NA to 0
-  results[is.na(nhft_d_short), nhft_d_short := 0]
-  results[is.na(nhft_s_short), nhft_s_short := 0]
   
   # Calculate the combined volume for NHFT supply and demand
-  results[, nhft_a_short := (nhft_d_short + nhft_s_short)]
+  results[!is.na(nhft_d_short) & !is.na(nhft_s_short), nhft_a_short := (nhft_d_short + nhft_s_short)]
+  results[!is.na(nhft_d_short) & is.na(nhft_s_short), nhft_a_short := nhft_d_short]
+  results[is.na(nhft_d_short) & !is.na(nhft_s_short), nhft_a_short := nhft_s_short]
   
   
   return(results)
@@ -351,7 +347,7 @@ gen_hft_table <- function(dataset)
 
 
 # The output directory for images
-output_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/13-08-2013_b"
+output_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/13-08-2013"
 
 
 # The start and end of the ban period 
@@ -368,10 +364,10 @@ hft_table <- gen_hft_table(hft_dataset)
 
 
 # Create a final dataset for plotting the hft figures of the mean total daily volume
-hft_figure_dataset <- hft_table[, list(hft_d=mean(hft_d), hft_s=mean(hft_s), hft_a=mean(hft_a),
-                                       hft_d_short=mean(hft_d_short), hft_s_short=mean(hft_s_short), hft_a_short=mean(hft_a_short),
-                                       nhft_d=mean(nhft_d), nhft_s=mean(nhft_s), nhft_a=mean(nhft_a),
-                                       nhft_d_short=mean(nhft_d_short), nhft_s_short=mean(nhft_s_short), nhft_a_short=mean(nhft_a_short)), 
+hft_figure_dataset <- hft_table[, list(hft_d=mean(hft_d, na.rm=TRUE), hft_s=mean(hft_s, na.rm=TRUE), hft_a=mean(hft_a, na.rm=TRUE),
+                                       hft_d_short=mean(hft_d_short, na.rm=TRUE), hft_s_short=mean(hft_s_short, na.rm=TRUE), hft_a_short=mean(hft_a_short, na.rm=TRUE),
+                                       nhft_d=mean(nhft_d, na.rm=TRUE), nhft_s=mean(nhft_s, na.rm=TRUE), nhft_a=mean(nhft_a, na.rm=TRUE),
+                                       nhft_d_short=mean(nhft_d_short, na.rm=TRUE), nhft_s_short=mean(nhft_s_short, na.rm=TRUE), nhft_a_short=mean(nhft_a_short, na.rm=TRUE)), 
                               by="time,status,Q"]
 hft_figure_dataset[, time := as.Date(time)]
 
@@ -443,41 +439,13 @@ for (quartile in plot_quartiles)
   
   
   
-  # Display HFT and NHFT on the same plot for all transactions, identify the ban period on the plot
-  hft_nhft <- melt(hft_figure_dataset[Q == quartile, list(time, status, hft_a, nhft_a)], id=c("time", "status"))
-  p <- ggplot(hft_nhft) + geom_line(aes(x=time, y=value, colour=variable, linetype=status), size=1)
+  # Display the HFT_a results for all transactions, identify the ban period on the plot
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_a, linetype=status), size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
-    labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
-    scale_colour_grey(start = 0, end = .6) + theme_bw()
-  directory <- paste(output_dir, "HFT_NHFT", sep="/")
-  dir.create(directory, showWarnings = FALSE, recursive = TRUE)
-  file <- paste("HFT NHFT - ", quartile, ".png", sep="")
-  file <- paste(directory, file, sep="/")
-  ggsave(filename=file, plot=p, width=12, height=6)
-  
-  
-  
-  
-  # Display HFT and NHFT on the same plot for all shortsale transactions, identify the ban period on the plot
-  hft_nhft_short <- melt(hft_figure_dataset[Q == quartile, list(time, status, hft_a_short, nhft_a_short)], id=c("time", "status"))
-  p <- ggplot(hft_nhft_short) + geom_line(aes(x=time, y=value, colour=variable, linetype=status), size=1) 
-  rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
-  p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
-    scale_y_continuous(labels = dollar) +
-    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
-    labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
-    scale_colour_grey(start = 0, end = .6) + theme_bw()
-  directory <- paste(output_dir, "HFT_NHFT", sep="/")
-  file <- paste("HFT NHFT Short Sale Only - ", quartile, ".png", sep="")
-  file <- paste(directory, file, sep="/")
-  ggsave(filename=file, plot=p, width=12, height=6)
-  
-  
-  
-  
+    labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_A Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
   directory <- paste(output_dir, "HFT_A", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
@@ -497,6 +465,24 @@ for (quartile in plot_quartiles)
   directory <- paste(output_dir, "NHFT_A", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("NHFT_A - ", quartile, ".png", sep="")
+  file <- paste(directory, file, sep="/")
+  ggsave(filename=file, plot=p, width=12, height=6)
+  
+  
+  
+  
+  # Display HFT and NHFT on the same plot for all transactions, identify the ban period on the plot
+  hft_nhft <- melt(hft_figure_dataset[Q == quartile, list(time, status, hft_a, nhft_a)], id=c("time", "status"))
+  p <- ggplot(hft_nhft) + geom_line(aes(x=time, y=value, colour=variable, linetype=status), size=1)
+  rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
+  p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
+    scale_y_continuous(labels = dollar) +
+    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
+    labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
+    scale_colour_grey(start = 0, end = .6) + theme_bw()
+  directory <- paste(output_dir, "HFT_NHFT", sep="/")
+  dir.create(directory, showWarnings = FALSE, recursive = TRUE)
+  file <- paste("HFT NHFT - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
   
@@ -587,6 +573,23 @@ for (quartile in plot_quartiles)
   #print(p)
   directory <- paste(output_dir, "NHFT_A", sep="/")
   file <- paste("NHFT_A Short Sale Only - ", quartile, ".png", sep="")
+  file <- paste(directory, file, sep="/")
+  ggsave(filename=file, plot=p, width=12, height=6)
+  
+  
+  
+  
+  # Display HFT and NHFT on the same plot for all shortsale transactions, identify the ban period on the plot
+  hft_nhft_short <- melt(hft_figure_dataset[Q == quartile, list(time, status, hft_a_short, nhft_a_short)], id=c("time", "status"))
+  p <- ggplot(hft_nhft_short) + geom_line(aes(x=time, y=value, colour=variable, linetype=status), size=1) 
+  rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
+  p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
+    scale_y_continuous(labels = dollar) +
+    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
+    labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
+    scale_colour_grey(start = 0, end = .6) + theme_bw()
+  directory <- paste(output_dir, "HFT_NHFT", sep="/")
+  file <- paste("HFT NHFT Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
 }
@@ -729,7 +732,7 @@ reg_figure_dataset <- regression_table[,
                                               hft_d_short=mean(hft_d_short, na.rm=TRUE), hft_s_short=mean(hft_s_short, na.rm=TRUE), hft_a_short=mean(hft_a_short, na.rm=TRUE),
                                               nhft_d=mean(nhft_d, na.rm=TRUE), nhft_s=mean(nhft_s, na.rm=TRUE), nhft_a=mean(nhft_a, na.rm=TRUE),
                                               nhft_d_short=mean(nhft_d_short, na.rm=TRUE), nhft_s_short=mean(nhft_s_short, na.rm=TRUE), nhft_a_short=mean(nhft_a_short, na.rm=TRUE)), 
-                                       by="time,Q"])
+                                       by="time,Q"]
 reg_figure_dataset[, time := as.Date(time)]
 
 # Display one of each plot for each quartile
@@ -760,7 +763,7 @@ for (quartile in plot_quartiles)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
-    labs(x = "Date", y = "Daily Volume Difference ($)", title=paste("HFT and NHFT Average Daily Volume Difference ($)", quartile, sep=" - "), colour="Category") +
+    labs(x = "Date", y = "Daily Volume Difference ($)", title=paste("HFT and NHFT Short Sale Only Average Daily Volume Difference ($)", quartile, sep=" - "), colour="Category") +
     scale_colour_grey(start = 0, end = .6) + theme_bw()
   directory <- paste(output_dir, "HFT_NHFT_DIFF", sep="/")
   file <- paste("HFT NHFT Difference Short Sale Only - ", quartile, ".png", sep="")
