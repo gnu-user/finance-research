@@ -175,19 +175,6 @@ gen_figure_dataset <- function(daily_data, matches)
 }
 
 
-# Create the dataset for the figures based on the regressions data, which is the
-# difference between the banned and unbanned symbols
-gen_reg_dataset <- function(daily_data)
-{
-  return(daily_data[, list(hft_d=mean(hft_d, na.rm=TRUE), hft_s=mean(hft_s, na.rm=TRUE), hft_a=mean(hft_a, na.rm=TRUE),
-                           hft_d_short=mean(hft_d_short, na.rm=TRUE), hft_s_short=mean(hft_s_short, na.rm=TRUE), hft_a_short=mean(hft_a_short, na.rm=TRUE),
-                           nhft_d=mean(nhft_d, na.rm=TRUE), nhft_s=mean(nhft_s, na.rm=TRUE), nhft_a=mean(nhft_a, na.rm=TRUE),
-                           nhft_d_short=mean(nhft_d_short, na.rm=TRUE), nhft_s_short=mean(nhft_s_short, na.rm=TRUE), nhft_a_short=mean(nhft_a_short, na.rm=TRUE)
-                           ), by="time,Q"])
-}
-
-
-
 # Create the initial HFT dataset for the HFT and NHFT daily total dollar volume for all stocks.
 # Daily_data, is the daily summary statistics, time_weight_data, which contains the time-weighted 
 gen_hft_dataset <- function(daily_data, matches)
@@ -364,7 +351,7 @@ gen_hft_table <- function(dataset)
 
 
 # The output directory for images
-output_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/13-08-2013"
+output_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/13-08-2013_b"
 
 
 # The start and end of the ban period 
@@ -737,7 +724,12 @@ for (quartile in plot_quartiles)
 
 
 # Create the dataset for the figures based on the differences used for the regressions
-reg_figure_dataset <- gen_reg_dataset(regression_table)
+reg_figure_dataset <- regression_table[, 
+                                       list(hft_d=mean(hft_d, na.rm=TRUE), hft_s=mean(hft_s, na.rm=TRUE), hft_a=mean(hft_a, na.rm=TRUE),
+                                              hft_d_short=mean(hft_d_short, na.rm=TRUE), hft_s_short=mean(hft_s_short, na.rm=TRUE), hft_a_short=mean(hft_a_short, na.rm=TRUE),
+                                              nhft_d=mean(nhft_d, na.rm=TRUE), nhft_s=mean(nhft_s, na.rm=TRUE), nhft_a=mean(nhft_a, na.rm=TRUE),
+                                              nhft_d_short=mean(nhft_d_short, na.rm=TRUE), nhft_s_short=mean(nhft_s_short, na.rm=TRUE), nhft_a_short=mean(nhft_a_short, na.rm=TRUE)), 
+                                       by="time,Q"])
 reg_figure_dataset[, time := as.Date(time)]
 
 # Display one of each plot for each quartile
