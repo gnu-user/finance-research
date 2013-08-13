@@ -26,6 +26,7 @@ library(xts)
 library(data.table)
 library(ggplot2)
 library(scales)
+library(reshape)
 
 
 # Create the dataset for the figures, the data is calculated for each stock each day.
@@ -172,6 +173,19 @@ gen_figure_dataset <- function(daily_data, matches)
                         rel_range=mean(rel_range), RELSS=mean(RELSS)), 
                  by="time,type,Q"])
 }
+
+
+# Create the dataset for the figures based on the regressions data, which is the
+# difference between the banned and unbanned symbols
+gen_reg_dataset <- function(daily_data)
+{
+  return(daily_data[, list(hft_d=mean(hft_d, na.rm=TRUE), hft_s=mean(hft_s, na.rm=TRUE), hft_a=mean(hft_a, na.rm=TRUE),
+                           hft_d_short=mean(hft_d_short, na.rm=TRUE), hft_s_short=mean(hft_s_short, na.rm=TRUE), hft_a_short=mean(hft_a_short, na.rm=TRUE),
+                           nhft_d=mean(nhft_d, na.rm=TRUE), nhft_s=mean(nhft_s, na.rm=TRUE), nhft_a=mean(nhft_a, na.rm=TRUE),
+                           nhft_d_short=mean(nhft_d_short, na.rm=TRUE), nhft_s_short=mean(nhft_s_short, na.rm=TRUE), nhft_a_short=mean(nhft_a_short, na.rm=TRUE)
+                           ), by="time,Q"])
+}
+
 
 
 # Create the initial HFT dataset for the HFT and NHFT daily total dollar volume for all stocks.
@@ -350,7 +364,7 @@ gen_hft_table <- function(dataset)
 
 
 # The output directory for images
-output_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/12-08-2013"
+output_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/13-08-2013"
 
 
 # The start and end of the ban period 
@@ -442,13 +456,41 @@ for (quartile in plot_quartiles)
   
   
   
-  # Display the HFT_a results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_a, linetype=status), size=1)
+  # Display HFT and NHFT on the same plot for all transactions, identify the ban period on the plot
+  hft_nhft <- melt(hft_figure_dataset[Q == quartile, list(time, status, hft_a, nhft_a)], id=c("time", "status"))
+  p <- ggplot(hft_nhft) + geom_line(aes(x=time, y=value, colour=variable, linetype=status), size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
-    labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_A Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
+    labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
+    scale_colour_grey(start = 0, end = .6) + theme_bw()
+  directory <- paste(output_dir, "HFT_NHFT", sep="/")
+  dir.create(directory, showWarnings = FALSE, recursive = TRUE)
+  file <- paste("HFT NHFT - ", quartile, ".png", sep="")
+  file <- paste(directory, file, sep="/")
+  ggsave(filename=file, plot=p, width=12, height=6)
+  
+  
+  
+  
+  # Display HFT and NHFT on the same plot for all shortsale transactions, identify the ban period on the plot
+  hft_nhft_short <- melt(hft_figure_dataset[Q == quartile, list(time, status, hft_a_short, nhft_a_short)], id=c("time", "status"))
+  p <- ggplot(hft_nhft_short) + geom_line(aes(x=time, y=value, colour=variable, linetype=status), size=1) 
+  rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
+  p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
+    scale_y_continuous(labels = dollar) +
+    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
+    labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
+    scale_colour_grey(start = 0, end = .6) + theme_bw()
+  directory <- paste(output_dir, "HFT_NHFT", sep="/")
+  file <- paste("HFT NHFT Short Sale Only - ", quartile, ".png", sep="")
+  file <- paste(directory, file, sep="/")
+  ggsave(filename=file, plot=p, width=12, height=6)
+  
+  
+  
+  
   #print(p)
   directory <- paste(output_dir, "HFT_A", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
@@ -534,7 +576,7 @@ for (quartile in plot_quartiles)
   
   
   
-  # Display the HFT_a shortsale ONLY results for all transactions, identify the ban period on the plot
+  # Display the HFT_a shortsale ONLY results for all transactions, identify the ban period on the plot  
   p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_a_short, linetype=status), size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
@@ -569,7 +611,6 @@ for (quartile in plot_quartiles)
 
 # Create the dataset for the shackling table figures and plot the results
 figure_dataset <- gen_figure_dataset(daily_results, final_matched)
-
 
 # Display one of each plot for each quartile
 for (quartile in plot_quartiles)
@@ -689,4 +730,64 @@ for (quartile in plot_quartiles)
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
 }
+
+
+
+
+
+
+# Create the dataset for the figures based on the differences used for the regressions
+reg_figure_dataset <- gen_reg_dataset(regression_table)
+reg_figure_dataset[, time := as.Date(time)]
+
+# Display one of each plot for each quartile
+for (quartile in plot_quartiles)
+{
+  # Display HFT_a and NHFT_a on the same plot, identify the ban period on the plot
+  hft_nhft <- melt(reg_figure_dataset[Q == quartile, list(time, Q, hft_a, nhft_a)], id=c("time", "Q"))
+  p <- ggplot(hft_nhft) + geom_line(aes(x=time, y=value, colour=variable), size=1) 
+  rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
+  p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
+    scale_y_continuous(labels = dollar) +
+    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
+    labs(x = "Date", y = "Daily Volume Difference ($)", title=paste("HFT and NHFT Average Daily Volume Difference ($)", quartile, sep=" - "), colour="Category") +
+    scale_colour_grey(start = 0, end = .6) + theme_bw()
+  directory <- paste(output_dir, "HFT_NHFT_DIFF", sep="/")
+  dir.create(directory, showWarnings = FALSE, recursive = TRUE)
+  file <- paste("HFT NHFT Difference - ", quartile, ".png", sep="")
+  file <- paste(directory, file, sep="/")
+  ggsave(filename=file, plot=p, width=12, height=6)
+  
+  
+  
+  
+  # Display HFT_a and NHFT_a on the same plot, identify the ban period on the plot
+  hft_nhft_short <- melt(reg_figure_dataset[Q == quartile, list(time, Q, hft_a_short, nhft_a_short)], id=c("time", "Q"))
+  p <- ggplot(hft_nhft_short) + geom_line(aes(x=time, y=value, colour=variable), size=1) 
+  rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
+  p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
+    scale_y_continuous(labels = dollar) +
+    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
+    labs(x = "Date", y = "Daily Volume Difference ($)", title=paste("HFT and NHFT Average Daily Volume Difference ($)", quartile, sep=" - "), colour="Category") +
+    scale_colour_grey(start = 0, end = .6) + theme_bw()
+  directory <- paste(output_dir, "HFT_NHFT_DIFF", sep="/")
+  file <- paste("HFT NHFT Difference Short Sale Only - ", quartile, ".png", sep="")
+  file <- paste(directory, file, sep="/")
+  ggsave(filename=file, plot=p, width=12, height=6)
+}
+
+
+
+
+
+
+# Save the figure datasets
+write.csv(figure_dataset, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
+                                "figure_dataset.csv", sep="/"), row.names = FALSE)
+
+write.csv(hft_figure_dataset, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
+                                "hft_figure_dataset.csv", sep="/"), row.names = FALSE)
+
+write.csv(reg_figure_dataset, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
+                                    "difference_figure_dataset.csv", sep="/"), row.names = FALSE)
 
