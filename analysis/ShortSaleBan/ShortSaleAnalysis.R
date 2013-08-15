@@ -110,7 +110,7 @@ summary_stats_weighted <- function(data)
 
 # Write the simplified summary results containing the means and medians rather than all of the
 # other statistical calculations such as std. deviation
-write_simplified_summary(trade_output_file, time_output_file)
+write_simplified_summary <- function(trade_output_file, time_output_file)
 {
   # Write the trade weighted results without all of the unnecessary columns
   out_daily <- copy(daily_results)
