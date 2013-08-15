@@ -108,6 +108,49 @@ summary_stats_weighted <- function(data)
 }
 
 
+# Write the simplified summary results containing the means and medians rather than all of the
+# other statistical calculations such as std. deviation
+write_simplified_summary(trade_output_file, time_output_file)
+{
+  # Write the trade weighted results without all of the unnecessary columns
+  out_daily <- copy(daily_results)
+  out_daily[, AddDate := as.POSIXct(AddDate, origin = "1970-01-01")]
+  out_daily[, AddDate := as.POSIXct(strptime(AddDate, "%Y-%m-%d"))]
+  out_daily[, ExpDate := as.POSIXct(ExpDate, origin = "1970-01-01")]
+  out_daily[, ExpDate := as.POSIXct(strptime(ExpDate, "%Y-%m-%d"))]
+  
+  
+  write.csv(out_daily[,
+                      list(time, symbol, type, ShortSale, 
+                           n, mean_shares, med_shares, sum_shares,
+                           mean_price, med_price,
+                           mean_vol, med_vol, sum_vol,
+                           mean_NRES, med_NRES, mean_NQRES, med_NQRES,
+                           mean_NRPI5, med_NRPI5, mean_NQRPI5, med_NQRPI5,
+                           rel_range, market_cap, 
+                           banned, AddDate, ExpDate)], 
+            trade_output_file, 
+            row.names = FALSE)
+  rm(out_daily)
+  
+  
+  
+  # Write the time weighted results without all of the unnecessary columns
+  write.csv(time_weight_results[,
+                                list(time, symbol,
+                                     mean_NBB, med_NBB, mean_NBO, med_NBO,
+                                     mean_NQBB, med_NQBB, mean_NQBO, med_NQBO,
+                                     mean_NRQHS, med_NRQHS, mean_NQRQHS, med_NQRQHS)],
+            time_output_file, 
+            row.names = FALSE)
+}
+
+
+
+
+# A flag specifying whether or not to calculate the results using trimming
+TRIM_RESULTS <- TRUE
+
 # Directory containing the files to parse and analyze
 taq_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/test_taq/"
 
@@ -118,10 +161,12 @@ time_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/test_time/"
 market_cap_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/market_cap.csv"
 
 # File to write the summary statistics for daily results to as CSV
-daily_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/daily_results_test.csv"
+daily_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/daily_results_trim.csv"
 
 # File to write the summary statistics for time weighted results to as CSV
-time_weight_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/time_weight_results_test.csv"
+time_weight_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/time_weight_results_trim.csv"
+
+
 
 
 # Get a list of the files in the directory
@@ -137,12 +182,18 @@ for (file in filenames)
   file_date <- date_from_name(file)
   cur_date <- as.POSIXct(strptime(file_date, "%Y-%m-%d"))
   
+  
+  # Set the time boundaries for trimming data before the first 5 mins and the last 5 min
+  left_bound <- as.POSIXct(strptime(paste(file_date, "09:35:00"), "%Y-%m-%d %H:%M:%S"))
+  right_bound <- as.POSIXct(strptime(paste(file_date, "15:55:00"), "%Y-%m-%d %H:%M:%S"))
+  
+  
   # Set the time entry for each trade
   taq[, time := convert_time(file_date, time)]
   #taq[, time := as.POSIXct(strptime(file_date, "%Y-%m-%d"))]
   #taq[, time := as.POSIXct(time, origin = "1970-01-01", tz="GMT")]
 
-  # Clean the data read from CSV, remove unncessary columns, date, shorttype and linkindicator
+  # Clean the data read from CSV, remove unncessary columns: date, buysell, shorttype and linkindicator
   taq[, date := NULL]
   taq[, buysell := NULL]
   taq[, ShortType := NULL]
@@ -216,6 +267,12 @@ for (file in filenames)
 
   # Calculate basic summary statistics, aggregate the results for the current day 
   # based on symbol, type, and shortsale indicator
+  if (TRIM_RESULTS)
+  {
+    taq <- taq[time >= left_bound & time <= right_bound]
+    gc()
+  }
+  
   taq[, time := cur_date]
   setkey(taq, time, symbol, type, ShortSale)
   results <- summary_stats(taq)
@@ -241,6 +298,12 @@ for (file in filenames)
   
 
   # Calculate basic time weighted summary statistics for each symbol
+  if (TRIM_RESULTS)
+  {
+    time_weighted <- time_weighted[time >= left_bound & time <= right_bound]
+    gc()
+  }
+  
   time_weighted[, time := cur_date]
   setkey(time_weighted, time, symbol)
   gc()
@@ -275,7 +338,7 @@ market_cap <- fread(market_cap_file)
 market_cap[, time := as.POSIXct(strptime(time, "%Y%m%d"))]
 market_cap[, symbol := as.factor(symbol)]
 
-# Clean the data read from CSV, remove unncessary columns, date, shorttype and linkindicator
+# Clean the data read from CSV, remove unncessary columns
 market_cap[, permno := NULL]
 
 # Ignore any erroneous entries missing symbols, prc, or shrout
@@ -285,7 +348,7 @@ market_cap <- market_cap[symbol != "" | !is.na(prc) | !is.na(market_cap)]
 market_cap[, market_cap := prc * shrout]
 setkey(market_cap, time, symbol)
 
-# Get the market for each day for each symbol
+# Calculate the market cap for each day for each symbol
 for (entry in daily_results[, unique(symbol)])
 {
   dates <- daily_results[symbol == entry, unique(time)]
@@ -314,3 +377,5 @@ gc()
 # Write the results to CSV file
 write.csv(daily_results, daily_results_file, row.names = FALSE)
 write.csv(time_weight_results, time_weight_results_file, row.names = FALSE)
+
+
