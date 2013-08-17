@@ -27,6 +27,11 @@ library(data.table)
 library(ggplot2)
 library(scales)
 library(reshape)
+library(RColorBrewer)
+
+
+# Sets the bounds based on the number of ticks
+number_ticks <- function(n) {function(limits) pretty(limits, n)}
 
 
 # Create the dataset for the figures, the data is calculated for each stock each day.
@@ -346,8 +351,82 @@ gen_hft_table <- function(dataset)
 }
 
 
+# Create the dataset for generating the figures related to the matching process
+gen_matching_dataset <- function(daily_data)
+{
+  symbols <- unique(daily_data[, symbol])
+  
+  # Aggregate the market cap so there is only one entry for each symbol for each day
+  # as the market cap is not affected by the type of trade
+  agr_market_cap <- daily_data[, list(market_cap=mean(market_cap)), by="time,symbol"]
+  
+  # Calculate the quartile bounds
+  quartiles <- quantile(agr_market_cap[, market_cap], names=FALSE)
+  Q0 <- quartiles[1]
+  Q1 <- quartiles[2]
+  Q2 <- quartiles[3]
+  Q3 <- quartiles[4]
+  Q4 <- quartiles[5]
+  
+  
+  # For each symbol aggregate the data related to the matching process
+  for (cur_symbol in symbols)
+  {    
+    # Determine the quartile of the current symbol based on market cap
+    cur_cap <- mean(daily_data[symbol == cur_symbol, 
+                               list(market_cap=mean(market_cap)), by="time"]$market_cap)
+    
+    if (cur_cap >= Q0 && cur_cap <= Q1)
+    {
+      quartile <- "Q1"
+    }
+    else if (cur_cap > Q1 && cur_cap <= Q2)
+    {
+      quartile <- "Q2"
+    }
+    else if (cur_cap > Q2 && cur_cap <= Q3)
+    {
+      quartile <- "Q3"
+    }
+    else if (cur_cap > Q3 && cur_cap <= Q4)
+    {
+      quartile <- "Q4"
+    }
+    else
+    {
+      quartile <- NA
+    }
+    
+    
+    # The daily trading volume
+    result <- daily_data[symbol == cur_symbol, 
+                         list(Q=quartile, transactions=sum(n), sum_shares=sum(sum_shares),
+                              min_shares=min(min_shares), mean_shares=mean(mean_shares), med_shares=as.double(median(med_shares)), max_shares=max(max_shares),
+                              min_price=min(min_price), mean_price=mean(mean_price), med_price=as.double(median(med_price)), max_price=max(max_price),
+                              min_vol=min(min_vol), mean_vol=mean(mean_vol), med_vol=as.double(median(med_vol)), max_vol=max(max_vol),
+                              total_vol=sum(sum_vol), market_cap=mean(market_cap)), 
+                         by="time,symbol"]
+    
+    
+    if (exists("results"))
+    {
+      results <- rbind(results, result)
+    }
+    else
+    {
+      results <- result
+    }
+    setkey(results, time, symbol)
+  }
+  
+  return(results)
+}
+
+
+  
+
 # The output directory for images
-output_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/13-08-2013"
+figure_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/13-08-2013"
 
 
 # The start and end of the ban period 
@@ -383,7 +462,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_D Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "HFT_D", sep="/")
+  directory <- paste(figure_dir, "HFT_D", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT_D - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -398,7 +477,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_D Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "NHFT_D", sep="/")
+  directory <- paste(figure_dir, "NHFT_D", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("NHFT_D - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -415,7 +494,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_S Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "HFT_S", sep="/")
+  directory <- paste(figure_dir, "HFT_S", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT_S - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -430,7 +509,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_S Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "NHFT_S", sep="/")
+  directory <- paste(figure_dir, "NHFT_S", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("NHFT_S - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -447,7 +526,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_A Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "HFT_A", sep="/")
+  directory <- paste(figure_dir, "HFT_A", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT_A - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -462,7 +541,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_A Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "NHFT_A", sep="/")
+  directory <- paste(figure_dir, "NHFT_A", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("NHFT_A - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -480,7 +559,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
     scale_colour_grey(start = 0, end = .6) + theme_bw()
-  directory <- paste(output_dir, "HFT_NHFT", sep="/")
+  directory <- paste(figure_dir, "HFT_NHFT", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT NHFT - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -497,7 +576,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_D Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "HFT_D", sep="/")
+  directory <- paste(figure_dir, "HFT_D", sep="/")
   file <- paste("HFT_D Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -511,7 +590,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_D Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "NHFT_D", sep="/")
+  directory <- paste(figure_dir, "NHFT_D", sep="/")
   file <- paste("NHFT_D Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -527,7 +606,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_S Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "HFT_S", sep="/")
+  directory <- paste(figure_dir, "HFT_S", sep="/")
   file <- paste("HFT_S Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -541,7 +620,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_S Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "NHFT_S", sep="/")
+  directory <- paste(figure_dir, "NHFT_S", sep="/")
   file <- paste("NHFT_S Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -557,7 +636,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_A Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "HFT_A", sep="/")
+  directory <- paste(figure_dir, "HFT_A", sep="/")
   file <- paste("HFT_A Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -571,7 +650,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_A Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "NHFT_A", sep="/")
+  directory <- paste(figure_dir, "NHFT_A", sep="/")
   file <- paste("NHFT_A Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -588,7 +667,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
     scale_colour_grey(start = 0, end = .6) + theme_bw()
-  directory <- paste(output_dir, "HFT_NHFT", sep="/")
+  directory <- paste(figure_dir, "HFT_NHFT", sep="/")
   file <- paste("HFT NHFT Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -612,7 +691,7 @@ for (quartile in plot_quartiles)
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
        labs(x = "Date", y = "RELSS", title=paste("Short-selling Activity (RELSS)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "RELSS", sep="/")
+  directory <- paste(figure_dir, "RELSS", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("RELSS - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -628,7 +707,7 @@ for (quartile in plot_quartiles)
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
        labs(x = "Date", y = "RES", title=paste("National Effective Spreads (RES)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "RES", sep="/")
+  directory <- paste(figure_dir, "RES", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("National RES - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -642,7 +721,7 @@ for (quartile in plot_quartiles)
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
        labs(x = "Date", y = "RES", title=paste("NASDAQ Effective Spreads (RES)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "RES", sep="/")
+  directory <- paste(figure_dir, "RES", sep="/")
   file <- paste("NASDAQ RES - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -657,7 +736,7 @@ for (quartile in plot_quartiles)
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
        labs(x = "Date", y = "RPI5", title=paste("National Price Impacts (RPI5)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "RPI5", sep="/")
+  directory <- paste(figure_dir, "RPI5", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("National RPI5 - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -671,7 +750,7 @@ for (quartile in plot_quartiles)
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
        labs(x = "Date", y = "RPI5", title=paste("NASDAQ Price Impacts (RPI5)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "RPI5", sep="/")
+  directory <- paste(figure_dir, "RPI5", sep="/")
   file <- paste("NASDAQ RPI5 - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -686,7 +765,7 @@ for (quartile in plot_quartiles)
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
        labs(x = "Date", y = "RVOL", title=paste("Proportional Trading Range (RVOL)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "RVOL", sep="/")
+  directory <- paste(figure_dir, "RVOL", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("RVOL - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -702,7 +781,7 @@ for (quartile in plot_quartiles)
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
        labs(x = "Date", y = "RES", title=paste("National Effective Spreads for Short Sales Only (RES)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "RES", sep="/")
+  directory <- paste(figure_dir, "RES", sep="/")
   file <- paste("National RES Short Sales Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -715,7 +794,7 @@ for (quartile in plot_quartiles)
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
        labs(x = "Date", y = "RES", title=paste("NASDAQ Effective Spreads for Short Sales Only (RES)", quartile, sep=" - "), linetype="Type")
   #print(p)
-  directory <- paste(output_dir, "RES", sep="/")
+  directory <- paste(figure_dir, "RES", sep="/")
   file <- paste("NASDAQ RES Short Sales Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -747,7 +826,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume Difference ($)", title=paste("HFT and NHFT Average Daily Volume Difference ($)", quartile, sep=" - "), colour="Category") +
     scale_colour_grey(start = 0, end = .6) + theme_bw()
-  directory <- paste(output_dir, "HFT_NHFT_DIFF", sep="/")
+  directory <- paste(figure_dir, "HFT_NHFT_DIFF", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT NHFT Difference - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -765,7 +844,7 @@ for (quartile in plot_quartiles)
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume Difference ($)", title=paste("HFT and NHFT Short Sale Only Average Daily Volume Difference ($)", quartile, sep=" - "), colour="Category") +
     scale_colour_grey(start = 0, end = .6) + theme_bw()
-  directory <- paste(output_dir, "HFT_NHFT_DIFF", sep="/")
+  directory <- paste(figure_dir, "HFT_NHFT_DIFF", sep="/")
   file <- paste("HFT NHFT Difference Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
   ggsave(filename=file, plot=p, width=12, height=6)
@@ -776,13 +855,72 @@ for (quartile in plot_quartiles)
 
 
 
+# Create the dataset for the figures to demonstrate the matching algorithm
+matching_dataset <- gen_matching_dataset(daily_results)
+matching_dataset[, time := as.Date(time)]
+
+figure_matched <- copy(final_matched)
+figure_matched[, AddDate := as.POSIXct(AddDate, origin = "1970-01-01")]
+figure_matched[, AddDate := as.Date(AddDate)]
+figure_matched[, ExpDate := as.POSIXct(ExpDate, origin = "1970-01-01")]
+figure_matched[, ExpDate := as.Date(ExpDate)]
+
+
+# Display the top 10 matches based on price and volume
+for (i in 1:10)
+{
+  setkey(figure_matched, sum_price)
+  ban_symbol <- as.character(figure_matched[][i, symbol])
+  match_symbol <- as.character(figure_matched[][i, match])
+  
+  # Display the matching based on price
+  p <- ggplot(matching_dataset[symbol %in% c(ban_symbol, match_symbol)]) + geom_line(aes(x=time, y=mean_price, colour=symbol), size=1)
+  rect <- data.table(xmin=figure_matched[symbol == ban_symbol, AddDate], xmax=figure_matched[symbol == ban_symbol, ExpDate], ymin=-Inf, ymax=Inf)
+  p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
+      scale_y_continuous(breaks = number_ticks(5), labels = dollar) +
+      geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) +
+      scale_colour_brewer(palette="Set1") + 
+      labs(x = "Date", y = "Mean Price ($)", title=paste("Banned Symbol", ban_symbol, "Matched to", match_symbol, "- Price ($)"), colour="Symbol")
+  
+  directory <- paste(figure_dir, "Matching", sep="/")
+  dir.create(directory, showWarnings = FALSE, recursive = TRUE)
+  file <- paste("Price ", ban_symbol, " ", match_symbol, ".png", sep="")
+  file <- paste(directory, file, sep="/")
+  ggsave(filename=file, plot=p, width=8, height=4)
+  
+  
+  
+  
+  # Reset the list of matched symbols based on volume
+  setkey(figure_matched, sum_vol)
+  ban_symbol <- as.character(figure_matched[][i, symbol])
+  match_symbol <- as.character(figure_matched[][i, match])
+  
+  # Display the matching based on vol
+  p <- ggplot(matching_dataset[symbol %in% c(ban_symbol, match_symbol)]) + geom_line(aes(x=time, y=mean_vol, colour=symbol), size=1)
+  rect <- data.table(xmin=figure_matched[symbol == ban_symbol, AddDate], xmax=figure_matched[symbol == ban_symbol, ExpDate], ymin=-Inf, ymax=Inf)
+  p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
+    scale_y_continuous(labels = dollar) +
+    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) +
+    scale_colour_brewer(palette="Set1") + 
+    labs(x = "Date", y = "Mean Volume ($)", title=paste("Banned Symbol", ban_symbol, "Matched to", match_symbol, "- Volume ($)"), colour="Symbol")
+  
+  directory <- paste(figure_dir, "Matching", sep="/")
+  dir.create(directory, showWarnings = FALSE, recursive = TRUE)
+  file <- paste("Volume ", ban_symbol, " ", match_symbol, ".png", sep="")
+  file <- paste(directory, file, sep="/")
+  ggsave(filename=file, plot=p, width=8, height=4)
+}
+
+
+
 # Save the figure datasets
 write.csv(figure_dataset, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
-                                "figure_dataset.csv", sep="/"), row.names = FALSE)
+                                "figure_market_quality.csv", sep="/"), row.names = FALSE)
 
 write.csv(hft_figure_dataset, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
-                                "hft_figure_dataset.csv", sep="/"), row.names = FALSE)
+                                "figure_HFT.csv", sep="/"), row.names = FALSE)
 
 write.csv(reg_figure_dataset, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
-                                    "difference_figure_dataset.csv", sep="/"), row.names = FALSE)
+                                    "figure_difference.csv", sep="/"), row.names = FALSE)
 
