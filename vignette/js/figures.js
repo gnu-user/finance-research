@@ -25,7 +25,7 @@ var rootURL = "http://vignette.dom/api";
 $(document).ready(function () {
     $.ajax({
       type: 'GET',
-      url: rootURL + '/pricevol/' + "ABCB",
+      url: rootURL + '/pricevol/' + "UBSI",
       dataType: "json", // data type of response
       success: function(data) {
           plotMatch(data);
@@ -38,8 +38,7 @@ function plotMatch(data) {
 	var priceSeries = [],
       volumeSeries = [],
       yAxisOptions = [],
-	    i = 0,
-		  colors = Highcharts.getOptions().colors;
+	    i = 0
 
 		// set the allowed units for data grouping
 		var groupingUnits = [[
@@ -75,9 +74,6 @@ function plotMatch(data) {
         i++;
 	  });
 
-    console.log("TEST");
-    console.log(priceSeries);
-    console.log(volumeSeries);
 
 		$('#matching_plot').highcharts('StockChart', {
         chart: {
@@ -91,6 +87,10 @@ function plotMatch(data) {
 		    title: {
 		        text: 'AAPL Historical'
 		    },
+
+        legend:{
+            enabled: true
+        },
 
 		    yAxis: [{
 		        title: {
@@ -111,7 +111,7 @@ function plotMatch(data) {
         xAxis : {
 				    plotLines : [{
 					    value : Date.UTC(2008,8,19),
-					    color : 'red',
+					    color : '#1aadce',
 					    dashStyle : 'shortdash',
 					    width : 2.5,
 					    label : {
@@ -119,7 +119,7 @@ function plotMatch(data) {
 					    }
 				    }, {
 					    value : Date.UTC(2008,9,9),
-					    color : 'red',
+					    color : '#1aadce',
 					    dashStyle : 'shortdash',
 					    width : 2.5,
 					    label : {
@@ -129,7 +129,10 @@ function plotMatch(data) {
 			  },
 
 		    series: [{
+            id: 'Banned Price',
 		        type: 'spline',
+            color: '#377EB8',
+            lineWidth: 2.5,
 		        name: priceSeries[0].name,
 		        data: priceSeries[0].price,
             yAxis: 0,
@@ -138,7 +141,10 @@ function plotMatch(data) {
 		        }
 		    }, 
         {
+            id: 'Matched Price', 
 		        type: 'spline',
+            color: '#E41A1C',
+            lineWidth: 2.5,
 		        name: priceSeries[1].name,
 		        data: priceSeries[1].price,
             yAxis: 0,
@@ -147,19 +153,27 @@ function plotMatch(data) {
 		        }
 		    },
         {
+            id: 'Banned Volume',
 		        type: 'spline',
+            color: '#377EB8',
+            lineWidth: 2,
 		        name: volumeSeries[0].name,
 		        data: volumeSeries[0].volume,
 		        yAxis: 1,
+            linkedTo: 'Banned Price', 
 		        dataGrouping: {
 					      units: groupingUnits
 		        }
 		    },
         {
+            id: 'Matched Volue',
 		        type: 'spline',
+            color: '#E41A1C',
+            lineWidth: 2,
 		        name: volumeSeries[1].name,
 		        data: volumeSeries[1].volume,
 		        yAxis: 1,
+            linkedTo: 'Matched Price',
 		        dataGrouping: {
 					      units: groupingUnits
 		        }
