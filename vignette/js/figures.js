@@ -59,6 +59,24 @@ $(document).ready(function () {
             }
         });
     });
+
+    /* Plot the banned symbol and match when clicking match */
+    $('#match').click(function(event) {
+        /* Get the banned symbol */
+        var symbol = $('#banned_symbol').val();
+
+        /* Display the plot */
+        $.ajax({
+          type: 'GET',
+          url: rootURL + '/pricevol/' + symbol,
+          dataType: 'json', // data type of response
+          success: function(data) {
+              plotMatch(data);
+          }
+        });
+
+        event.preventDefault();
+    });
 });
 
 
