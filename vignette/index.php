@@ -24,7 +24,8 @@ session_start();
  /* Display the template for registration */
 include 'templates/header.php';
 
-include 'templates/figures.php';
+/* The interactive plot demonstrating the matching process */
+include 'templates/matching_interactive.php';
 
 /* Include the footer */
 include 'templates/footer.php';

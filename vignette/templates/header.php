@@ -1,6 +1,6 @@
 <?php
 /*
- *  Registration Page
+ *  Vignette
  *
  *  Copyright (C) 2013 Jonathan Gillett, Computer Science Club
  *  All rights reserved.
@@ -23,10 +23,10 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Computer Science Club Registration Page</title>
+    <title>The Need for Speed - High Frequency Finance and Short Selling</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Registration Page">
-    <meta name="author" content="Computer Science Club">
+    <meta name="description" content="The Need for Speed - High Frequency Finance and Short Selling">
+    <meta name="author" content="Jonathan Gillett">
     <!-- CSS styles -->
     <style type="text/css">
       body {
@@ -47,7 +47,7 @@
       <div class="navbar-inner">
         <div class="container">
           <a class="brand" href="index.php">
-            Computer Science Club Registration Page
+            The Need for Speed - High Frequency Finance and Short Selling
           </a>
         </div>
       </div>
