@@ -136,6 +136,25 @@ function plotMatch(data) {
                   ' Matched to ' +  priceSeries[1].name
 		    },
 
+        legend: {
+            enabled: true,
+            backgroundColor: '#F5F5F5',
+            layout: 'horizontal',
+            floating: true,
+            align: 'left',
+            verticalAlign: 'top',
+            x: 250,
+            y: 25,
+            shadow: false, 
+            border: 0, 
+            borderRadius: 0, 
+            borderWidth: 0,
+            labelFormatter: function() {
+                var legendName = this.name;
+                return legendName.replace(/Price/g,'');
+            }
+        },
+
 		    yAxis: [{
 		        title: {
 		            text: 'Price'
