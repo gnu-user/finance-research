@@ -70,7 +70,7 @@
         </div>
         <div class="control-group">
           <div class="controls">
-            <button class="btn btn-primary" id="match">Show Matching</button>
+            <button class="btn btn-inverse" id="match">Show Matching</button>
           </div>
         </div>
       </form>
