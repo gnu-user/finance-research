@@ -31,6 +31,6 @@
   </div>
   <h2>Banned Symbol Matching Results</h2>
   <div class="row">
-    <div id="matching_plot" style="height: 600px; min-width: 600px"></div>
+    <div id="matching_plot" style="height: 630px; min-width: 600px"></div>
   </div>
 </div>
