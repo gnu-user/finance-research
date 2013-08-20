@@ -34,6 +34,9 @@ $app = new \Slim\Slim();
 $app->get('/banned/:quartile', 'getBanned');
 $app->get('/banned', 'getBannedAll');
 
+/* Get the symbol ban and expire date */
+$app->get('/banperiod/:symbol', 'getBanPeriod');
+
 /* Get the mean price and volume for the banned and matched symbol */
 $app->get('/pricevol/:symbol', 'getPriceVol');
 
@@ -64,6 +67,7 @@ function getBanned($quartile)
 	echo json_encode(banned_symbols($mysqli, $quartile));
 }
 
+
 /** 
  * Get the list of all banned symbols.
  * 
@@ -86,6 +90,31 @@ function getBannedAll()
 	/* Encode the results as JSON */
 	echo json_encode(banned_symbols($mysqli));
 }
+
+
+/** 
+ * Get the ban period for the symbol.
+ * 
+ * @package api
+ *
+ */
+function getBanPeriod($symbol)
+{
+	global $db_user, $db_pass, $db_name;
+
+	/* Connect to the database */
+	$mysqli = new mysqli("localhost", $db_user, $db_pass, $db_name);
+
+	/* check connection */
+	if (mysqli_connect_errno()) {
+		printf("Connect failed: %s\n", mysqli_connect_error());
+		exit();
+	}
+
+	/* Encode the results as JSON */
+	echo json_encode(ban_period($mysqli, $symbol));
+}
+
 
 /** 
  * Get the mean price and volume for each symbol.

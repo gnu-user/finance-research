@@ -97,6 +97,49 @@ function banned_symbols($mysqli, $quartile="ALL")
 }
 
 
+/**
+ * Get the ban period for the banned symbol
+ *
+ * @param mysqli $mysqli The mysqli connection object
+ * @param string $symbol the banned symbol
+ *
+ * @return array mapping the start and end periods
+ */
+function ban_period($mysqli, $symbol)
+{
+    $period = array();
+
+   /* Get the ban symbols */
+    if ($stmt = $mysqli->prepare("SELECT 
+                                      UNIX_TIMESTAMP(STR_TO_DATE(add_date, '%Y-%m-%d')) * 1000, 
+                                      UNIX_TIMESTAMP(STR_TO_DATE(exp_date, '%Y-%m-%d')) * 1000 
+                                  FROM
+                                      matching
+                                  WHERE 
+                                      symbol = ?"))
+    {
+        /* bind parameters for markers */
+        $stmt->bind_param('s', $symbol);
+
+        /* execute query */
+        $stmt->execute();
+
+        /* bind result variables */
+        $stmt->bind_result($start, $end);
+
+        $stmt->fetch();
+
+        /* close statement */
+        $stmt->close();
+    }
+
+    $period['start'] = $start;
+    $period['end'] = $end;
+
+    return $period;
+}
+
+
 /** 
  * Gets the mean price and volume for the banned symbol specified.
  *
