@@ -19,13 +19,32 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+require_once 'inc/db_interface.php';
+require 'inc/auth.php';
+
 session_start();
+
+
+/* Connect to the database */
+$mysqli = new mysqli("localhost", $db_user, $db_pass, $db_name);
+
+/* check connection */
+if (mysqli_connect_errno()) {
+	printf("Connect failed: %s\n", mysqli_connect_error());
+	exit();
+}
+
 
  /* Display the template for registration */
 include 'templates/header.php';
 
+
+/* Get a list of the banned symbols for the default plot */
+$banned_symbols = banned_symbols($mysqli);
+
 /* The interactive plot demonstrating the matching process */
 include 'templates/matching_interactive.php';
+
 
 /* Include the footer */
 include 'templates/footer.php';

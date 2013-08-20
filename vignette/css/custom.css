@@ -49,3 +49,10 @@ form.well.form-horizontal {
     padding-bottom: 5px; 
     margin-bottom: 0px;
 }
+
+/* Syling specific to the matching plot */
+#matching_plot {
+  height: 600px; 
+  min-width: 600px;
+  margin-bottom: 25px;
+}

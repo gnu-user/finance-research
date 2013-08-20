@@ -22,7 +22,13 @@
 
 /* 
  * Displays an interactive plot to demonstrate the results of the matching
- * process for any banned symbol selected. 
+ * process for any banned symbol selected.
+ *
+ * DEPENDENCIES
+ * --------------
+ *
+ * - The template depends on the variable $banned_symbols being set, which is
+ *   an array containing the list of banned symbols for the quartile.
  */
 ?>
 <div class="hero-unit">
@@ -31,6 +37,43 @@
   </div>
   <h2>Banned Symbol Matching Results</h2>
   <div class="row">
-    <div id="matching_plot" style="height: 630px; min-width: 600px"></div>
+    <div id="matching_plot"></div>
+  </div>
+  <div class="row">
+    <div class="span8">
+      <form class="form-horizontal" accept-charset="UTF-8">
+        <div class="control-group">
+          <label for="mkt_quartile" class="control-label">Market Cap Quartile</label>
+          <div class="controls">
+            <select id="mkt_quartile" name="mkt_quartile" class="input-xlarge">
+              <option selected="selected">ALL</option>
+              <option>Q1 (Smallest)</option>
+              <option>Q2</option>
+              <option>Q3</option>
+              <option>Q4 (Largest)</option>
+            </select>
+          </div>
+        </div>
+        <div class="control-group">
+          <label for="banned_symbol" class="control-label">Banned Symbol</label>
+          <div class="controls">
+            <select id="banned_symbol" name="banned_symbol" class="input-xlarge">
+              <option selected="selected">UBSI</option>
+              <?php
+                  foreach ($banned_symbols as $symbol)
+                  {
+                    echo '<option>' . $symbol . '</option>';
+                  }
+              ?>
+            </select>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="controls">
+            <button class="btn btn-primary" id="submit">Show Matching</button>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 </div>

@@ -1,7 +1,7 @@
 /*
  * Vignette
  *
- * Copyright (C) 2013 Jonathan Gillett, Joseph Heron, Computer Science Club at DC and UOIT
+ * Copyright (C) 2013 Jonathan Gillett
  * All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,17 +23,46 @@ var rootURL = "http://vignette.dom/api";
 
 
 $(document).ready(function () {
+    /* Set the default symbol to ban on load */
+    var symbol = $('#banned_symbol').val();
+
+    /* Display the default plot */
     $.ajax({
       type: 'GET',
-      url: rootURL + '/pricevol/' + "UBSI",
-      dataType: "json", // data type of response
+      url: rootURL + '/pricevol/' + symbol,
+      dataType: 'json', // data type of response
       success: function(data) {
           plotMatch(data);
       }
     });
+
+    /* Update the list of symbols after selecting a quartile */
+    $('#mkt_quartile').click(function(event) {
+        var value = $('#mkt_quartile').val();
+        var quartile = value.match(/(Q[0-9])/)[1];
+        var list = '';
+
+        $.ajax({
+            type: 'GET',
+            url: rootURL + '/banned/' + quartile,
+            dataType: 'json', 
+            success: function(data) {
+                length = data.length;
+
+                for (var i = 0; i < length; i++)
+                {
+                    list += "<option>"+data[i]+"</option>";
+                }
+
+                //console.log(list);
+                $('#banned_symbol').html(list);
+            }
+        });
+    });
 });
 
 
+/* Plot the price and volume matching of the banned to the unbanned symbol */
 function plotMatch(data) {
 	var priceSeries = [],
       volumeSeries = [],
@@ -88,10 +117,6 @@ function plotMatch(data) {
 		        text: 'Banned Symbol ' + priceSeries[0].name + 
                   ' Matched to ' +  priceSeries[1].name
 		    },
-
-        legend:{
-            enabled: true
-        },
 
 		    yAxis: [{
 		        title: {
