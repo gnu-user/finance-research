@@ -25,6 +25,17 @@ var rootURL = "http://vignette.dom/api";
 $(document).ready(function () {
     /* Set the default symbol to ban on load */
     var symbol = $('#banned_symbol').val();
+    var ban_period = {};
+
+    /* Get the ban period */
+    $.ajax({
+      type: 'GET',
+      url: rootURL + '/banperiod/' + symbol,
+      dataType: 'json', // data type of response
+      success: function(data) {
+          ban_period = data;
+      }
+    });
 
     /* Display the default plot */
     $.ajax({
@@ -32,15 +43,22 @@ $(document).ready(function () {
       url: rootURL + '/pricevol/' + symbol,
       dataType: 'json', // data type of response
       success: function(data) {
-          plotMatch(data);
+          plotMatch(data, ban_period);
       }
     });
 
     /* Update the list of symbols after selecting a quartile */
     $('#mkt_quartile').click(function(event) {
         var value = $('#mkt_quartile').val();
-        var quartile = value.match(/(Q[0-9])/)[1];
+        var quartile = 'ALL';
         var list = '';
+
+        if (value.match(/(Q[0-9])/))
+        {
+          var quartile = value.match(/(Q[0-9])/)[1];
+        }
+
+        console.log(quartile);        
 
         $.ajax({
             type: 'GET',
@@ -64,14 +82,25 @@ $(document).ready(function () {
     $('#match').click(function(event) {
         /* Get the banned symbol */
         var symbol = $('#banned_symbol').val();
+        var ban_period = {};
 
-        /* Display the plot */
+        /* Get the ban period */
+        $.ajax({
+          type: 'GET',
+          url: rootURL + '/banperiod/' + symbol,
+          dataType: 'json', // data type of response
+          success: function(data) {
+              ban_period = data;
+          }
+        });
+
+        /* Get the data and display the plot */
         $.ajax({
           type: 'GET',
           url: rootURL + '/pricevol/' + symbol,
           dataType: 'json', // data type of response
           success: function(data) {
-              plotMatch(data);
+              plotMatch(data, ban_period);
           }
         });
 
@@ -81,7 +110,7 @@ $(document).ready(function () {
 
 
 /* Plot the price and volume matching of the banned to the unbanned symbol */
-function plotMatch(data) {
+function plotMatch(data, ban_period) {
 	var priceSeries = [],
       volumeSeries = [],
       yAxisOptions = [],
@@ -128,7 +157,7 @@ function plotMatch(data) {
         },
 
 		    rangeSelector: {
-		        selected: 4
+		        selected: 2
 		    },
 
 		    title: {
@@ -183,7 +212,7 @@ function plotMatch(data) {
 		    
         xAxis : {
 				    plotLines : [{
-					    value : Date.UTC(2008,8,19),
+					    value : ban_period.start,
 					    color : '#555555',
 					    dashStyle : 'shortdash',
 					    width : 2.5,
@@ -191,7 +220,7 @@ function plotMatch(data) {
 						    text : 'Ban Started'
 					    }
 				    }, {
-					    value : Date.UTC(2008,9,9),
+					    value : ban_period.end,
 					    color : '#555555',
 					    dashStyle : 'shortdash',
 					    width : 2.5,
