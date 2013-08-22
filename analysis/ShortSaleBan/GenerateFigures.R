@@ -426,7 +426,7 @@ gen_matching_dataset <- function(daily_data)
   
 
 # The output directory for images
-figure_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/13-08-2013"
+figure_dir <- "/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/figures/17-08-2013"
 
 
 # The start and end of the ban period 
@@ -455,13 +455,13 @@ hft_figure_dataset[, time := as.Date(time)]
 for (quartile in plot_quartiles)
 {
   # Display the HFT_d results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_d, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_d, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_D Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "HFT_D", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT_D - ", quartile, ".png", sep="")
@@ -470,13 +470,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the NHFT_d results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_d, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_d, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_D Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "NHFT_D", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("NHFT_D - ", quartile, ".png", sep="")
@@ -487,13 +487,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the HFT_s results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_s, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_s, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_S Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "HFT_S", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT_S - ", quartile, ".png", sep="")
@@ -502,13 +502,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the NHFT_s results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_s, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_s, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_S Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "NHFT_S", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("NHFT_S - ", quartile, ".png", sep="")
@@ -519,13 +519,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the HFT_a results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_a, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_a, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_A Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "HFT_A", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT_A - ", quartile, ".png", sep="")
@@ -534,13 +534,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the NHFT_a results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_a, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_a, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_A Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "NHFT_A", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("NHFT_A - ", quartile, ".png", sep="")
@@ -558,7 +558,9 @@ for (quartile in plot_quartiles)
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
-    scale_colour_grey(start = 0, end = .6) + theme_bw()
+    #scale_colour_grey(start = 0, end = .6) + theme_bw()
+    scale_colour_brewer(palette="Set1")
+  
   directory <- paste(figure_dir, "HFT_NHFT", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT NHFT - ", quartile, ".png", sep="")
@@ -569,13 +571,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the HFT_d shortsale ONLY results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_d_short, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_d_short, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_D Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "HFT_D", sep="/")
   file <- paste("HFT_D Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -583,13 +585,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the NHFT_d shortsale ONLY results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_d_short, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_d_short, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_D Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "NHFT_D", sep="/")
   file <- paste("NHFT_D Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -599,13 +601,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the HFT_s shortsale ONLY results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_s_short, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_s_short, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_S Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "HFT_S", sep="/")
   file <- paste("HFT_S Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -613,13 +615,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the NHFT_s shortsale ONLY results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_s_short, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_s_short, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_S Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "NHFT_S", sep="/")
   file <- paste("NHFT_S Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -629,13 +631,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the HFT_a shortsale ONLY results for all transactions, identify the ban period on the plot  
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_a_short, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=hft_a_short, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT_A Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "HFT_A", sep="/")
   file <- paste("HFT_A Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -643,13 +645,13 @@ for (quartile in plot_quartiles)
   
   
   # Display the NHFT_a shortsale ONLY results for all transactions, identify the ban period on the plot
-  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_a_short, linetype=status), size=1)
+  p <- ggplot(hft_figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=nhft_a_short, linetype=status), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("NHFT_A Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "NHFT_A", sep="/")
   file <- paste("NHFT_A Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -666,7 +668,9 @@ for (quartile in plot_quartiles)
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume ($)", title=paste("HFT and NHFT Short Sale Only Average Total Daily Volume ($)", quartile, sep=" - "), colour="Category", linetype="Type") +
-    scale_colour_grey(start = 0, end = .6) + theme_bw()
+    scale_colour_brewer(palette="Set1")
+    #scale_colour_grey(start = 0, end = .6) + theme_bw()
+  
   directory <- paste(figure_dir, "HFT_NHFT", sep="/")
   file <- paste("HFT NHFT Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -685,23 +689,24 @@ figure_dataset <- gen_figure_dataset(daily_results, final_matched)
 for (quartile in plot_quartiles)
 {
   # Display the RELSS results for all transactions, identify the ban period on the plot
-  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=RELSS, linetype=type), size=1)
+  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=RELSS, linetype=type), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
+       scale_colour_brewer(palette="Set1") + 
        labs(x = "Date", y = "RELSS", title=paste("Short-selling Activity (RELSS)", quartile, sep=" - "), linetype="Type")
-  #print(p)
+  
   directory <- paste(figure_dir, "RELSS", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("RELSS - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
-  ggsave(filename=file, plot=p, width=12, height=6)
+  ggsave(filename=file, plot=p, width=8, height=4)
   
   
   
   
   # Display the National RES results for all transacitons, identify the ban period on the plot
-  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NRES, linetype=type), size=1)
+  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NRES, linetype=type), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
@@ -715,7 +720,7 @@ for (quartile in plot_quartiles)
   
   
   # Display the NASDAQ RES results for all transacitons, identify the ban period on the plot
-  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NQRES, linetype=type), size=1)
+  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NQRES, linetype=type), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
@@ -730,7 +735,7 @@ for (quartile in plot_quartiles)
   
   
   # Display the National RPI5 results for all transacitons, identify the ban period on the plot
-  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NRPI5, linetype=type), size=1)
+  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NRPI5, linetype=type), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
@@ -744,7 +749,7 @@ for (quartile in plot_quartiles)
   
   
   # Display the NASDAQ RPI5 results for all transacitons, identify the ban period on the plot
-  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NQRPI5, linetype=type), size=1)
+  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NQRPI5, linetype=type), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
@@ -759,7 +764,7 @@ for (quartile in plot_quartiles)
   
   
   # Display the relative range (RVOL)
-  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=rel_range, linetype=type), size=1)
+  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=rel_range, linetype=type), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
@@ -775,7 +780,7 @@ for (quartile in plot_quartiles)
   
   
   # Display the National effective spread for short sales only
-  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NRES_short, linetype=type), size=1)
+  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NRES_short, linetype=type), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
@@ -788,7 +793,7 @@ for (quartile in plot_quartiles)
   
   
   # Display the NASDAQ effective spread for short sales only
-  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NQRES_short, linetype=type), size=1)
+  p <- ggplot(figure_dataset[Q == quartile]) + geom_line(aes(x=time, y=NQRES_short, linetype=type), colour="#377EB8", size=1)
   rect <- data.table(xmin=ban_date, xmax=exp_date, ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
        geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
@@ -825,7 +830,9 @@ for (quartile in plot_quartiles)
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume Difference ($)", title=paste("HFT and NHFT Average Daily Volume Difference ($)", quartile, sep=" - "), colour="Category") +
-    scale_colour_grey(start = 0, end = .6) + theme_bw()
+    scale_colour_brewer(palette="Set1")
+    #scale_colour_grey(start = 0, end = .6) + theme_bw()
+
   directory <- paste(figure_dir, "HFT_NHFT_DIFF", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
   file <- paste("HFT NHFT Difference - ", quartile, ".png", sep="")
@@ -843,7 +850,9 @@ for (quartile in plot_quartiles)
     scale_y_continuous(labels = dollar) +
     geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
     labs(x = "Date", y = "Daily Volume Difference ($)", title=paste("HFT and NHFT Short Sale Only Average Daily Volume Difference ($)", quartile, sep=" - "), colour="Category") +
-    scale_colour_grey(start = 0, end = .6) + theme_bw()
+    scale_colour_brewer(palette="Set1")
+    #scale_colour_grey(start = 0, end = .6) + theme_bw()
+  
   directory <- paste(figure_dir, "HFT_NHFT_DIFF", sep="/")
   file <- paste("HFT NHFT Difference Short Sale Only - ", quartile, ".png", sep="")
   file <- paste(directory, file, sep="/")
@@ -878,9 +887,10 @@ for (i in 1:10)
   rect <- data.table(xmin=figure_matched[symbol == ban_symbol, AddDate], xmax=figure_matched[symbol == ban_symbol, ExpDate], ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
       scale_y_continuous(breaks = number_ticks(5), labels = dollar) +
-      geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) +
-      scale_colour_brewer(palette="Set1") + 
-      labs(x = "Date", y = "Mean Price ($)", title=paste("Banned Symbol", ban_symbol, "Matched to", match_symbol, "- Price ($)"), colour="Symbol")
+      geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
+      labs(x = "Date", y = "Mean Price ($)", title=paste("Banned Symbol", ban_symbol, "Matched to", match_symbol, "- Price ($)"), colour="Symbol") +
+      scale_colour_brewer(palette="Set1")
+      #scale_colour_grey(start = 0, end = .6) + theme_bw()
   
   directory <- paste(figure_dir, "Matching", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
@@ -901,9 +911,10 @@ for (i in 1:10)
   rect <- data.table(xmin=figure_matched[symbol == ban_symbol, AddDate], xmax=figure_matched[symbol == ban_symbol, ExpDate], ymin=-Inf, ymax=Inf)
   p <- p + scale_x_date(labels = date_format("%d-%b"), breaks = date_breaks("2 weeks")) + 
     scale_y_continuous(labels = dollar) +
-    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) +
-    scale_colour_brewer(palette="Set1") + 
-    labs(x = "Date", y = "Mean Volume ($)", title=paste("Banned Symbol", ban_symbol, "Matched to", match_symbol, "- Volume ($)"), colour="Symbol")
+    geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), color="grey50", alpha=0.2, inherit.aes = FALSE) + 
+    labs(x = "Date", y = "Mean Volume ($)", title=paste("Banned Symbol", ban_symbol, "Matched to", match_symbol, "- Volume ($)"), colour="Symbol") +
+    scale_colour_brewer(palette="Set1")
+    #scale_colour_grey(start = 0, end = .6) + theme_bw()
   
   directory <- paste(figure_dir, "Matching", sep="/")
   dir.create(directory, showWarnings = FALSE, recursive = TRUE)
@@ -912,6 +923,15 @@ for (i in 1:10)
   ggsave(filename=file, plot=p, width=8, height=4)
 }
 
+
+
+
+# Plot some regression residuals
+eqn = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + market_cap + sum_vol + rel_range + vwap + hft_a + hft_a * ssb")
+
+eqn_RVOL = gsub('(hft_[a-z])', hft_types[hft_type][, var], "ssb + market_cap + sum_vol + vwap + hft_a + hft_a * ssb")
+
+plot_residuals(regression_table[Q == "Q3"], eqn, eqn_RVOL, paste(figure_dir, "regressions", sep="/"), "HFT_A", " - Q3")
 
 
 # Save the figure datasets
@@ -924,3 +944,8 @@ write.csv(hft_figure_dataset, paste("/home/jon/Source/RESEARCH/finance-research/
 write.csv(reg_figure_dataset, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
                                     "figure_difference.csv", sep="/"), row.names = FALSE)
 
+write.csv(figure_matched, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
+                                  "final_matched.csv", sep="/"), row.names = FALSE)
+
+write.csv(matching_dataset, paste("/home/jon/Source/RESEARCH/finance-research/analysis/ShortSaleBan/data", 
+                                  "matching_dataset.csv", sep="/"), row.names = FALSE)
