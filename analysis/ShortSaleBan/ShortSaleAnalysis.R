@@ -44,6 +44,18 @@ date_from_name <- function(filename)
 }
 
 
+# A function that gets the postfix date from the filename
+# The argument is the name of the file
+filename_date <- function(filename)
+{
+  # Extract the date from filename
+  regexp <- "_([0-9]{2}[a-z]{3}[0-9]{4})"
+  match <- str_match(filename, regexp)
+  
+  return(match[2])
+}
+
+
 # A function that gets the name of the time weighted file based on the taq filename
 # The argument is the name of the taq file
 weighted_file_name <- function(filename)
@@ -152,19 +164,22 @@ write_simplified_summary <- function(trade_output_file, time_output_file)
 TRIM_RESULTS <- TRUE
 
 # Directory containing the files to parse and analyze
-taq_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/test_taq/"
+taq_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/Finance/short_sale_taq/test_taq/"
+
+# Directory to save the preliminary taq calculations, which are used to calculate the final aggregate results
+taq_results_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/Finance/short_sale_taq/test_results/"
 
 # Directory containing the time weighted files
-time_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/test_time/"
+time_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/Finance/short_sale_taq/test_time/"
 
 # File containing the market capitalization data
-market_cap_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/market_cap.csv"
+market_cap_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/Finance/short_sale_taq/market_cap.csv"
 
 # File to write the summary statistics for daily results to as CSV
-daily_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/daily_results_trim.csv"
+daily_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/Finance/short_sale_taq/daily_results_trim.csv"
 
 # File to write the summary statistics for time weighted results to as CSV
-time_weight_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/short_sale_taq/time_weight_results_trim.csv"
+time_weight_results_file <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/Finance/short_sale_taq/time_weight_results_trim.csv"
 
 
 
@@ -177,6 +192,10 @@ for (file in filenames)
 {
   # Load the individual file
   taq <- fread(file)
+  
+  # Set the filename for the output to save the preliminary taq results
+  taq_output_file <- paste("taq_results_", filename_date(file), ".csv", sep="")
+  
   
   # Get the date of the file from the filename
   file_date <- date_from_name(file)
@@ -195,7 +214,6 @@ for (file in filenames)
 
   # Clean the data read from CSV, remove unncessary columns: date, buysell, shorttype and linkindicator
   taq[, date := NULL]
-  taq[, buysell := NULL]
   taq[, ShortType := NULL]
   taq[, LinkIndicator := NULL]
   
@@ -211,16 +229,14 @@ for (file in filenames)
 
   # Add a row for the volume and calculate it
   taq[, volume := shares * price]
-  
-  
-  # Calculate the RES using the National and NSDQ BB/BO
-  # |Pt - Qt| / Qt , where Qt = (At + Bt) / 2
-  taq[, NRES := abs(price - ((NBO + NBB) / 2)) / ((NBO + NBB) / 2)]
-  taq[, NQRES := abs(price - ((NQBO + NQBB) / 2)) / ((NQBO + NQBB) / 2)]
-  
-  # set the time, symbol, type, and ShortSale as keys
-  setkey(taq, time, symbol, type, ShortSale)
+  setkey(taq, time, symbol)
   gc()
+  
+  
+  # Set the trade direction, used to set RES/RPI5 as +/- if the trade is a buy or sell
+  trade_direction <- data.table(type=c("B", "S"), v1=c(1, -1))
+  setkey(trade_direction, type)
+  
   
   
   # Load the corresponding time weighted file
@@ -229,33 +245,37 @@ for (file in filenames)
   gc()
   
   # Clean the data, convert data to proper types
-  time_weighted[, NMID := NULL]
-  time_weighted[, NQMID := NULL]
   time_weighted[, time := as.POSIXct(strptime(paste(file_date, time), "%Y-%m-%d %H:%M:%S"))]
   gc()
   time_weighted[, symbol := as.factor(symbol)]
-
+  
   # set the time and symbol as keys
   setkey(time_weighted, time, symbol)
   gc()
   
-
-  # Calculate the RPI5 using the National and NSDQ BB/BO and 
-  # midpoint in 5 minutes from the time-weighted file
+  
+  
+  # Add the midpoint and midpoint in 5 minute columns from the time weighted data
+  taq <- merge(taq, time_weighted[, list(time, symbol, NMID, NMID5, NQMID, NQMID5)])
+  gc()
+  
+  
+  
+  # Calculate the RES using the National and NSDQ BB/BO
+  # |Pt - Qt| / Qt , where Qt = (At + Bt) / 2
+  taq[, NRES := ((price - NMID) / NMID) * trade_direction[buysell][,v1]]
+  taq[, NQRES := ((price - NQMID) / NQMID) * trade_direction[buysell][,v1]]
+  
+  
+   
+  # Calculate the RPI5 using the National and NSDQ BB/BO and midpoint in 5 minutes
   # RPI5 = (Q_5min - Q) / Q, where Qt = (At + Bt) / 2
-  for (ticker in taq[, list(symbol=unique(symbol))]$symbol)
-  {
-    # Get the trade times
-    times <- taq[symbol == ticker, time]
-    
-    mid5 <- time_weighted[J(times, ticker)]$NMID5
-    taq[symbol == ticker, NRPI5 := (mid5 - ((NBO + NBB) / 2)) / ((NBO + NBB) / 2)]
-    gc()
-    
-    mid5 <- time_weighted[J(times, ticker)]$NQMID5
-    taq[symbol == ticker, NQRPI5 := (mid5 - ((NQBO + NQBB) / 2)) / ((NQBO + NQBB) / 2)]
-    gc()
-  }
+  taq[, NRPI5 := ((NMID5 - NMID) / NMID) * trade_direction[buysell][,v1]]
+  gc()
+  
+  taq[, NQRPI5 := ((NQMID5 - NQMID) / NQMID) * trade_direction[buysell][,v1]]
+  gc()
+  
   
   # Set any Inf results for RES or RPI5 to 0
   taq[!is.finite(NRES), NRES := 0]
@@ -264,7 +284,18 @@ for (file in filenames)
   taq[!is.finite(NQRPI5), NQRPI5 := 0]
   
   
+  # set the time, symbol, type, and ShortSale as keys
+  setkey(taq, time, symbol, type, ShortSale)
+  gc()
 
+
+  
+  
+  # Store the current calculations for the TAQ data to a file
+  write.csv(taq, paste(taq_results_dir, taq_output_file, sep="/"), row.names = FALSE)
+  
+  
+  
   # Calculate basic summary statistics, aggregate the results for the current day 
   # based on symbol, type, and shortsale indicator
   if (TRIM_RESULTS)
