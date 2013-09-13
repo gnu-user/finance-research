@@ -171,7 +171,8 @@ gen_dataset_hft <- function(daily_data, time_weight_data, matches)
   # Types of HFT and Non-HFT demanding/supplying liquidity
   types <- data.table(type=c("HFT_D","HFT_S", "NHFT_D", "NHFT_S"), 
                       v1=c("HH", "HH", "NN", "NN"), 
-                      v2=c("HN", "NH", "NH", "HN"))
+                      v2=c("HN", "NH", "NH", "HN"),
+                      v3=c("B", "S", "B", "S"))
   setkey(types, type)
   
   # ShortSale status, NA means HFT/NHFT for both non-shortsale and shortsale
@@ -198,15 +199,25 @@ gen_dataset_hft <- function(daily_data, time_weight_data, matches)
                                 by="time", all.x=TRUE)
           
         }
+        else if (status)
+        {
+          daily_volume <- daily_data[symbol == ban_symbol & buysell == types[entry][,v3] & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
+                               list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
+          
+          daily_volume <- merge(daily_volume, 
+                                daily_data[symbol == matched & buysell == types[entry][,v3] & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
+                                           list(match_sum_vol=sum(sum_vol)), by="time"],
+                                by="time", all.x=TRUE)
+        }
         else
         {
           daily_volume <- daily_data[symbol == ban_symbol & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
-                               list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
+                                     list(type=entry, shortsale=status, ban_sum_vol=sum(sum_vol)), by="time,symbol"]
           
           daily_volume <- merge(daily_volume, 
                                 daily_data[symbol == matched & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
                                            list(match_sum_vol=sum(sum_vol)), by="time"],
-                                by="time", all.x=TRUE)
+                                by="time", all.x=TRUE)          
         }
         
         
@@ -754,7 +765,8 @@ gen_dataset_hft_all <- function(daily_data, time_weight_data, matches)
   # Types of HFT and Non-HFT demanding/supplying liquidity
   types <- data.table(type=c("HFT_D","HFT_S", "NHFT_D", "NHFT_S"), 
                       v1=c("HH", "HH", "NN", "NN"), 
-                      v2=c("HN", "NH", "NH", "HN"))
+                      v2=c("HN", "NH", "NH", "HN"),
+                      v3=c("B", "S", "B", "S"))
   setkey(types, type)
   
   # ShortSale status, NA means HFT/NHFT for both non-shortsale and shortsale
@@ -773,10 +785,15 @@ gen_dataset_hft_all <- function(daily_data, time_weight_data, matches)
           daily_volume <- daily_data[symbol == cur_symbol & type %in% types[entry][,c(v1,v2)],
                                      list(type=entry, shortsale=status, sum_vol=sum(sum_vol)), by="time,symbol"]
         }
+        else if (status)
+        {
+          daily_volume <- daily_data[symbol == cur_symbol & buysell == types[entry][,v3] & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
+                                     list(type=entry, shortsale=status, sum_vol=sum(sum_vol)), by="time,symbol"]
+        }
         else
         {
           daily_volume <- daily_data[symbol == cur_symbol & type %in% types[entry][,c(v1,v2)] & ShortSale == status,
-                                     list(type=entry, shortsale=status, sum_vol=sum(sum_vol)), by="time,symbol"]
+                                     list(type=entry, shortsale=status, sum_vol=sum(sum_vol)), by="time,symbol"]          
         }
         
         
