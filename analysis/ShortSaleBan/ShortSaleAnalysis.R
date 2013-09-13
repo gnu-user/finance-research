@@ -100,7 +100,7 @@ summary_stats <- function(data)
                   min_NQRPI5=min(NQRPI5), mean_NQRPI5=mean(NQRPI5), med_NQRPI5=median(NQRPI5), max_NQRPI5=max(NQRPI5), sd_NQRPI5=sd(NQRPI5),
                   rel_range=((max(price) - min(price)) / (sum(volume) / sum(shares)))
                 ),
-              by="time,symbol,type,ShortSale"])
+              by="time,symbol,buysell,type,ShortSale"])
 }
 
 
@@ -161,7 +161,7 @@ write_simplified_summary <- function(trade_output_file, time_output_file)
 
 
 # A flag specifying whether or not to calculate the results using trimming
-TRIM_RESULTS <- TRUE
+TRIM_RESULTS <- FALSE
 
 # Directory containing the files to parse and analyze
 taq_dir <- "/run/media/jon/TOSHIBA/RESEARCH_DATA/Finance/short_sale_taq/test_taq/"
@@ -207,13 +207,16 @@ for (file in filenames)
   right_bound <- as.POSIXct(strptime(paste(file_date, "15:55:00"), "%Y-%m-%d %H:%M:%S"))
   
   
-  # Set the time entry for each trade
+  # Add a column with the time as seconds to midnight before converting to a datetime value
+  taq[, sec_midnight := (time %/% 1000)]
+  
+  # Set the time entry for each trade as a datetime
   taq[, time := convert_time(file_date, time)]
   #taq[, time := as.POSIXct(strptime(file_date, "%Y-%m-%d"))]
   #taq[, time := as.POSIXct(time, origin = "1970-01-01", tz="GMT")]
-
+  
+  
   # Clean the data read from CSV, remove unncessary columns: date, buysell, shorttype and linkindicator
-  taq[, date := NULL]
   taq[, ShortType := NULL]
   taq[, LinkIndicator := NULL]
   
@@ -227,6 +230,12 @@ for (file in filenames)
   taq[, NQBOSIZ := as.integer(NQBOSIZ)]
   taq[, ShortSale := as.logical(ShortSale)]
 
+  
+  # Reorder the colums so that seconds since midnight is after the date (SAS date format)
+  setcolorder(taq, c("time", "symbol", "shares", "buysell", "price", "type", "date", "sec_midnight", "NBB", "NBO",
+                     "NBBSIZ", "NBOSIZ", "NQBB", "NQBO", "NQBBSIZ", "NQBOSIZ", "ShortSale", "ShortSize"))
+  
+  
   # Add a row for the volume and calculate it
   taq[, volume := shares * price]
   setkey(taq, time, symbol)
@@ -285,7 +294,7 @@ for (file in filenames)
   
   
   # set the time, symbol, type, and ShortSale as keys
-  setkey(taq, time, symbol, type, ShortSale)
+  setkey(taq, time, symbol, buysell, type, ShortSale)
   gc()
 
 
@@ -305,7 +314,7 @@ for (file in filenames)
   }
   
   taq[, time := cur_date]
-  setkey(taq, time, symbol, type, ShortSale)
+  setkey(taq, time, symbol, buysell, type, ShortSale)
   results <- summary_stats(taq)
   gc()
   
@@ -320,7 +329,7 @@ for (file in filenames)
   }
   
   # Update the key indexes as files may not be loaded in correct date order
-  setkey(daily_results, time, symbol, type, ShortSale)
+  setkey(daily_results, time, symbol, buysell, type, ShortSale)
   
   # Free up memory
   rm(taq, results)
@@ -373,7 +382,7 @@ market_cap[, symbol := as.factor(symbol)]
 market_cap[, permno := NULL]
 
 # Ignore any erroneous entries missing symbols, prc, or shrout
-market_cap <- market_cap[symbol != "" | !is.na(prc) | !is.na(market_cap)]
+market_cap <- market_cap[symbol != "" | !is.na(prc) | !is.na(shrout)]
 
 # Calculate market cap for each stock
 market_cap[, market_cap := prc * shrout]
