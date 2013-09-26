@@ -96,7 +96,7 @@ Data Processing Workflow
     advisors, the reason given is due to the poor performance of disk operations 
     (reading/writing) large files on SHARCNET. Keep an eye on jobs, if there 
     are jobs that do not finish in time you will have to restart them manually,
-    see the log/<script name>/ directory to view the results.
+    see the log/script name/ directory to view the results.
 
 
 2.  After the aligned TAQ files have been created the next step is to then
@@ -138,44 +138,44 @@ Data Processing Workflow
 FAQ
 ----------------------------------------
 
-1.  Why are there so many separate scripts? Why not just have one?
+1.  Why are there so many separate scripts? Why not just have one?  
 
-The reason there are separate scripts for each process is because all of the
-jobs combined, or in some cases even two of the tasks combined into one script
-will not finish execution within the maximum time limit for a job on SHARCNET,
-which is 7 days. As well having separate scripts means that if a single job
-is not finished within time (due to the inconsistent performance on SHARCNET)
-you only have to restart that one job manually rather than redoing everything.
-
-
-2.  Why are there separate files?
-
-It is impossible for any task processing the entire dataset at once to complete
-the execution within 7 days, not only would it take months or years to process 
-the entire dataset as one job, there is also no system with enough RAM available
-(roughly 300GB+!).
+    The reason there are separate scripts for each process is because all of the
+    jobs combined, or in some cases even two of the tasks combined into one script
+    will not finish execution within the maximum time limit for a job on SHARCNET,
+    which is 7 days. As well having separate scripts means that if a single job
+    is not finished within time (due to the inconsistent performance on SHARCNET)
+    you only have to restart that one job manually rather than redoing everything.
 
 
-3.  Where are the log files?
+2.  Why are there separate files?  
 
-The log files are created within your current directory, a sub directory is
-create for log files related to each type of script/task you are executing,
-(e.g. log/aling_quotes/ is the log file for running align quotes scripts).
-
-
-4.  Help, it's not working!
-
-Make sure that you are executing the job runners instead of the script individually,
-make sure that you are giving the correct arguments and the full path to the
-directories or files (e.g. use /work/jgillett/trades/ instead of just trades/),
-if it is still not working take a look at the log/ directory for the corresponding
-script and see what the error message says.
+    It is impossible for any task processing the entire dataset at once to complete
+    the execution within 7 days, not only would it take months or years to process 
+    the entire dataset as one job, there is also no system with enough RAM available
+    (roughly 300GB+!).
 
 
-5.  My jobs are not finishing in time!
+3.  Where are the log files?  
 
-This was an issue I ran into initially, while python is fast and works well,
-its performance can be improved. Try looking into using [PyPy](http://pypy.org/)
-it is an optimized version of python created by researchers trying to get
-extra performance, it markets itself as being 2-3x faster than the standard
-python.
+    The log files are created within your current directory, a sub directory is
+    create for log files related to each type of script/task you are executing,
+    (e.g. log/aling_quotes/ is the log file for running align quotes scripts).
+
+
+4.  Help, it's not working!  
+
+    Make sure that you are executing the job runners instead of the script individually,
+    make sure that you are giving the correct arguments and the full path to the
+    directories or files (e.g. use /work/jgillett/trades/ instead of just trades/),
+    if it is still not working take a look at the log/ directory for the corresponding
+    script and see what the error message says.
+
+
+5.  My jobs are not finishing in time!  
+
+    This was an issue I ran into initially, while python is fast and works well,
+    its performance can be improved. Try looking into using [PyPy](http://pypy.org/)
+    it is an optimized version of python created by researchers trying to get
+    extra performance, it markets itself as being 2-3x faster than the standard
+    python.
