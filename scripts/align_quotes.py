@@ -281,13 +281,14 @@ with open(trades_file, 'rb') as trades_csv:
                 # Get the current NBBO for each exchange in the quotes file using the most recent entry
                 if trade_date == quote_date and trade_time >= quote_time:
                     # Parse the latest NBBO bid, ofr, bidsiz, ofrsiz for each exchange
-                    if not quote['EX'] in exchanges:
+                    if not quote['EX'] in exchanges and quote['EX'] != 'D':
                         exchanges[quote['EX']] = {}
 
-                    exchanges[quote['EX']]['BID'] = float(quote['BID'])
-                    exchanges[quote['EX']]['OFR'] = float(quote['OFR'])
-                    exchanges[quote['EX']]['BIDSIZ'] = float(quote['BIDSIZ'])
-                    exchanges[quote['EX']]['OFRSIZ'] = float(quote['OFRSIZ'])
+                    if quote['EX'] != 'D':
+                        exchanges[quote['EX']]['BID'] = float(quote['BID'])
+                        exchanges[quote['EX']]['OFR'] = float(quote['OFR'])
+                        exchanges[quote['EX']]['BIDSIZ'] = float(quote['BIDSIZ'])
+                        exchanges[quote['EX']]['OFRSIZ'] = float(quote['OFRSIZ'])
 
                 # Error if NO matching entries in the quotes file has been found
                 elif not exchanges and (trade_date < quote_date or trade_time < quote_time):
