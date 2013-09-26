@@ -9,8 +9,10 @@ Summary
 -----------------
 
 This project contains scripts used to process and massage the data into a usable form, which can be found in 
-[scripts](scripts/) as well as R code which was used to analyze the data, which can be found in
-[analysis](analysis/). For more information related to the research, please see the [poster](poster).
+[scripts](scripts/), for an overview of the code and instructions code please see the [README file](scripts/README.md).
+As well, for the analysis aspect of the research, the R code which was used to analyze the data can be found in
+[analysis](analysis/). For more information related specifically to the research itself and the outcome, please 
+see the [poster](poster/STAR_award_poster_2013.pdf).
 
 
 Copyright (Really Copyleft)
