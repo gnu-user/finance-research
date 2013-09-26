@@ -8,9 +8,9 @@ more information.
 Summary
 -----------------
 
-This project contains scripts used to process and massage the data into a usable form, which can be found in the
-[scripts](scripts/) directory, research related information can be found in [research/](research/), and more
-specific projects can be found in their own directory.
+This project contains scripts used to process and massage the data into a usable form, which can be found in 
+[scripts](scripts/) as well as R code which was used to analyze the data, which can be found in
+[analysis](analysis/). For more information related to the research, please see the [poster](poster).
 
 
 Copyright (Really Copyleft)
