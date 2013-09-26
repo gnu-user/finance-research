@@ -120,17 +120,17 @@ Data Processing Workflow
 
 
 5.  Lastly, to generate summary statistics for the raw TAQ data edit the analysis
-    script ShortSaleAnalysis.R and set the following variables accordingly and
+    script ShortSaleAnalysis.R and **set the following variables accordingly** and
     manually execute the R script as an individual job on SHARCNET. Due to the
     disk reading and writing this job often takes a while, make sure you give 
-    the job the maximum amount of memory as it usually requires 12GB of RAM.
+    the job the maximum amount of memory as it usually requires 12GB of RAM.  
 
-    TRIM_RESULTS
-    taq_dir
-    time_dir
-    market_cap_file
-    daily_results_file
-    time_weight_results_file
+    TRIM_RESULTS  
+    taq_dir  
+    time_dir  
+    market_cap_file  
+    daily_results_file  
+    time_weight_results_file  
     
 
 
