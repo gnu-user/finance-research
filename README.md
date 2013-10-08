@@ -1,18 +1,19 @@
 Finance Research
-================
+===========================
 
-This project contains research related to fnance, HFT, and econometrics, see the summary below for
-more information.
+This project contains the basis of the exploratory research I did as part of my undergraduate research during
+the summer of 2013. The purpose of the research was to better better understand the impact of the short-selling 
+activities of high frequency traders and the effect of the short-selling ban during the recent financial crisis. 
 
 
 Summary
------------------
+---------------------------
 
-This project contains scripts used to process and massage the data into a usable form, which can be found in 
-[scripts](scripts/), for an overview of the code and instructions code please see the [README file](scripts/README.md).
-As well, for the analysis aspect of the research, the R code which was used to analyze the data can be found in
-[analysis](analysis/). For more information related specifically to the research itself and the outcome, please 
-see the [poster](poster/STAR_award_poster_2013.pdf).
+This project contains scripts used to process and massage the time series data into a usable form, which can be 
+found in[scripts](scripts/), for an overview of the code and instructions please see the 
+[README file](scripts/README.md). As well, for the analysis aspect of the research, the R code which was used to 
+analyze the data can be found in [analysis](analysis/). For more information related specifically to the research 
+itself and the outcome, please see the [poster](poster/STAR_award_poster_2013.pdf).
 
 
 Copyright (Really Copyleft)
