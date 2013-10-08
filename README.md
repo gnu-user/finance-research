@@ -2,7 +2,7 @@ Finance Research
 ===========================
 
 This project contains the basis of the exploratory research I did as part of my undergraduate research during
-the summer of 2013. The purpose of the research was tobetter understand the impact of the short-selling 
+the summer of 2013. The purpose of the research was to better understand the impact of the short-selling 
 activities of high frequency traders and the effect of the short-selling ban during the recent financial crisis. 
 
 
