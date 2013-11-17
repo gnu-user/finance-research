@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The Need for Speed - High Frequency Finance and Short Selling">
+  <meta name="author" content="Jonathan Gillett">
+  <title>The Need for Speed - High Frequency Finance and Short Selling</title>
+  <!-- CSS styles -->
+  <style type="text/css">
+    body {
+      padding-top: 60px;
+      padding-bottom: 20px;
+    }
+  </style>
+  <link href="css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+  <link href="css/custom.css" rel="stylesheet">
+  <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+  <!--[if lt IE 9]>
+    <script src="js/html5shiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+  <div class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <div class="container">
+        <a class="brand" href="index.php">
+          The Need for Speed - High Frequency Finance and Short Selling
+        </a>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="hero-unit">
+      <div class="page-header">
+        <h1>Matching Process</h1>
+      </div>
+      <h2>Banned Symbol Matching Results</h2>
+      <div class="row">
+        <div id="matching_plot"></div>
+      </div>
+      <div class="row">
+        <div class="span8">
+          <form class="form-horizontal" accept-charset="UTF-8">
+            <div class="control-group">
+              <label for="mkt_quartile" class="control-label">Market Cap Quartile</label>
+              <div class="controls">
+                <select id="mkt_quartile" name="mkt_quartile" class="input-xlarge">
+                  <option selected="selected">ALL</option>
+                  <option>Q1 (Smallest)</option>
+                  <option>Q2</option>
+                  <option>Q3</option>
+                  <option>Q4 (Largest)</option>
+                </select>
+              </div>
+            </div>
+            <div class="control-group">
+              <label for="banned_symbol" class="control-label">Banned Symbol</label>
+              <div class="controls">
+                <select id="banned_symbol" name="banned_symbol" class="input-xlarge">
+                  <option selected="selected">UBSI</option>
+                </select>
+              </div>
+            </div>
+            <div class="control-group">
+              <div class="controls">
+                <button class="btn btn-inverse" id="match">Show Matching</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <footer class="footer">
+      <div class="pull-left">
+        <p>Designed and built by Jonathan Gillett</p>
+        <p><strong>&copy; Jonathan Gillett</strong></p>
+      </div>
+    </footer>
+  </div>
+  <!-- Javascript
+  ================================================== -->
+  <!-- Placed at the end of the document so the pages load faster -->
+  <script src="js/jquery-1.9.1.min.js"></script>
+  <script src="js/bootstrap.min.js"></script>
+  <script src="js/highstocks/highstock.js"></script>
+  <script src="js/figures.js"></script>
+</body>
+</html>
