@@ -56,3 +56,29 @@ form.well.form-horizontal {
   min-width: 600px;
   margin-bottom: 25px;
 }
+
+/* Fixing the top navbar */
+.navbar-inverse .nav .active>a, .navbar-inverse .nav .active>a:hover, .navbar-inverse .nav .active>a:focus {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+.navbar .nav>li>a:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Make the body font size larger */
+p {
+  font-size: 16px;
+}
+
+/* Space between sections */
+h1 + p {
+  margin-bottom: 40px;
+}
+
+/* Space between methodology images */
+img.method-img {
+  margin: 15px 0px;
+}
+img.method-img + h1 {
+  margin-top: 25px;
+}
