@@ -70,9 +70,17 @@ p {
   font-size: 16px;
 }
 
+p + ul {
+  font-size: 16px;
+}
+
+dl {
+  font-size: 16px;
+}
+
 /* Space between sections */
-h1 + p {
-  margin-bottom: 40px;
+h1 {
+  margin-top: 40px;
 }
 
 /* Space between methodology images */
