@@ -128,13 +128,121 @@
     <h3>4.1 Market Quality Analysis</h3>
     <img class="method-img" src="img/NASDAQ_RES.png" class="img-rounded" />
     <img class="method-img" src="img/HFT_NHFT_DVOL.png" class="img-rounded" />
-    <div class="well well-small">
+    <div class="well">
       <p>
         The figures describe the impact from the ban on short-selling  based on the daily averages for each market capitalization quartile, with the highlighted area representing the period in which the ban was in effect. Our results show a significant impact on larger market capitalization, which is corroborated by <a href="#shackling">Boehmer, Ekkehart, Jones, and Zhang (2013)</a>.
       </p>
     </div>
     <h3>4.2 Shorting Ban Market Quality Impact</h3>
-    
+    <!-- Overall impact table -->
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>Dep. Variable</th>
+          <th>Ban Dummy</th>
+          <th>DVOL</th>
+          <th>MKT CAP</th>
+          <th>RVOL</th>
+          <th>VWAP</th>
+          <th>Adj. R2</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>RQS</td>
+          <td>4.454e-03 ***</td>
+          <td>-4.599e-05 **</td>
+          <td>-1.055e-11</td>
+          <td>3.610e-02 ***</td>
+          <td>1.521e-04</td>
+          <td>52%</td>
+        </tr>
+        <tr>
+          <td>RES</td>
+          <td>1.719e-03 ***</td>
+          <td>-9.747e-06</td>
+          <td>-4.331e-12</td>
+          <td>1.560e-02 ***</td>
+          <td>3.620e-06</td>
+          <td>48%</td>
+        </tr>
+        <tr>
+          <td>RPI5</td>
+          <td>3.620e-06</td>
+          <td>3.688e-06</td>
+          <td>5.825e-12</td>
+          <td>-1.083e-04</td>
+          <td>-7.866e-07</td>
+          <td>2%</td>
+        </tr>
+        <tr>
+          <td>RVOL</td>
+          <td>8.051e-03 ***</td>
+          <td>4.486e-04 ***</td>
+          <td>-2.889e-10 *</td>
+          <td></td>
+          <td>-2.958e-04 ***</td>
+          <td>26%</td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Impact of ban table -->
+    <table class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>Dep. Variable</th>
+          <th>Quartile 1 (Smallest)</th>
+          <th>Quartile 2</th>
+          <th>Quartile 3</th>
+          <th>Quartile 4 (Largest)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>RQS</td>
+          <td>8.296e-03 **</td>
+          <td>4.407e-03 ***</td>
+          <td>3.598e-03 ***</td>
+          <td>3.152e-02 ***</td>
+        </tr>
+        <tr>
+          <td>RES</td>
+          <td>3.541e-03 **</td>
+          <td>2.046e-03 ***</td>
+          <td>1.188e-03 ***</td>
+          <td>5.099e-04 ***</td>
+        </tr>
+        <tr>
+          <td>RPI5</td>
+          <td>2.547e-04</td>
+          <td>1.415e-04</td>
+          <td>-1.500e-04</td>
+          <td>6.132e-05</td>
+        </tr>
+        <tr>
+          <td>RVOL</td>
+          <td>2.445e-03</td>
+          <td>7.127e-03 ***</td>
+          <td>6.716e-03 **</td>
+          <td>1.482e-02 ***</td>
+        </tr>
+        <tr>
+          <td>Number of pairs</td>
+          <td>47</td>
+          <td>47</td>
+          <td>48</td>
+          <td>48</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="well">
+      <p>
+        The first table describes the overall impact of the shorting ban on market quality measures, the second the impact of the ban on
+        each market cap quartile reflected by the ban-dummy coefficients. Regressions were performed using daily panel data of the
+        difference between each banned symbol and the corresponding match. The significance at the <strong>10%</strong>, <strong>5%</strong>, 
+        and <strong>1%</strong> level are indicated by <strong>*</strong>, <strong>**</strong>, and <strong>***</strong>.
+      </p>
+    </div>
 
     <!-- CONCLUSIONS -->
     <h1 id="conclusion" class="section">5 Conclusions and Further Research</h1>
