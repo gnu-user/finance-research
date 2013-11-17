@@ -1,0 +1,58 @@
+/*
+ *  Registration Page
+ *
+ *  Copyright (C) 2013 Jonathan Gillett, Computer Science Club
+ *  All rights reserved.
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/* Fix the default font colour for alerts */
+.alert#activeinfo, .alert#alreadyactive {
+    color: #505050;
+}
+
+.alert#notmember {
+    color: #990000;
+}
+
+form.well.form-horizontal {
+    padding-top: 35px;
+    padding-bottom: 25px; 
+}
+
+/* Some additional styling for the footer */
+.footer {
+    border-top: 1px solid #E5E5E5;
+    margin-top: 65px;
+    padding: 24px 0 26px;
+}
+
+.footer p {
+    color: #555555;
+    margin-bottom: 0;
+}
+
+/* Cleanup the forms */
+.form-horizontal div.form-actions {
+    padding-bottom: 5px; 
+    margin-bottom: 0px;
+}
+
+/* Syling specific to the matching plot */
+#matching_plot {
+  height: 600px; 
+  min-width: 600px;
+  margin-bottom: 25px;
+}
