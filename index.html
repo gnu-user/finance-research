@@ -10,7 +10,7 @@
   <!-- CSS styles -->
   <style type="text/css">
     body {
-      padding-top: 60px;
+      padding-top: 120px;
       padding-bottom: 20px;
     }
   </style>
@@ -22,8 +22,8 @@
     <script src="js/html5shiv.min.js"></script>
   <![endif]-->
 </head>
-<body>
-  <div class="navbar navbar-inverse navbar-fixed-top">
+<body data-spy="scroll" data-target=".subnav" data-offset="120">
+  <div class="navbar navbar-fixed-top navbar-inverse">
     <div class="navbar-inner">
       <div class="container">
         <a class="brand" href="index.php">
@@ -31,13 +31,41 @@
         </a>
       </div>
     </div>
+    <div class="container" style="background-color: #E6E6E6;">
+      <div class="subnav">
+        <ul class="nav nav-pills" style="text-color:white">
+          <li><a href="#intro"  style="color:black;">Introduction</a></li>
+          <li><a href="#method"  style="color:black;">Methodology</a></li>
+          <li><a href="#matching"  style="color:black;">Matching Process</a></li>
+          <li><a href="#results"  style="color:black;">Results</a></li>
+          <li><a href="#conclusion"  style="color:black;">Conclusions and Further Research</a></li>
+          <li><a href="#acknowledge" style="color:black;">Acknowledgements</a></li>
+          <li><a href="#references" style="color:black;">References</a></li>
+        </ul>
+      </div>
+    </div>
   </div>
   <div class="container">
-    <div class="hero-unit">
-      <div class="page-header">
-        <h1>Matching Process</h1>
-      </div>
-      <h2>Banned Symbol Matching Results</h2>
+    <!-- INTRODUCTION -->
+    <h1 id="intro" class="section">1 Introduction</h1>
+    <p>
+      The goal of the research was to better understand the impact of the short-selling Market Quality Analysis
+      activities of high frequency traders (HFT) on market liquidity and efficiency. Two NASDAQ databases were used, 
+      containing more than 1000 stocks over a four month period that includes a ban on short-selling during the recent 
+      financial crisis. Our findings will help regulators, investors and market operators to better understand the impact 
+      of regulations restricting short-selling and the impact of HFT before, during and after regulatory interventions.
+    </p>
+
+    <!-- METHODOLOGY -->
+    <h1 id="method" class="section">2 Methodology</h1>
+    <img class="method-img" src="img/data_processing.png" class="img-rounded" />
+    <img class="method-img" src="img/data_analysis.png" class="img-rounded" />
+    <img class="method-img" src="img/stat_models.png" class="img-rounded" />
+
+    <!-- MATCHING -->
+    <h1 id="matching" class="section">3 Matching Process</h1>
+    <h2>Banned Symbol Matching Results</h2>
+    <div class="well well-large">
       <div class="row">
         <div id="matching_plot"></div>
       </div>
@@ -73,6 +101,20 @@
         </div>
       </div>
     </div>
+    <!-- RESULTS -->
+    <h1 id="results" class="section">4 Results</h1>
+
+
+    <!-- CONCLUSIONS -->
+    <h1 id="conclusion" class="section">5 Conclusions and Further Research</h1>
+
+    <!-- ACKNOWLEDGEMENTS -->
+    <h1 id="acknowledge" class="section">6 Acknowledgements</h1>
+
+    <!-- REFERENCES -->
+    <h1 id="references" class="section">7 References</h1>
+
+
     <footer class="footer">
       <div class="pull-left">
         <p>Designed and built by Jonathan Gillett</p>
