@@ -19,10 +19,37 @@
  */
 
 /* The root URL for REST api */
-var rootURL = "http://vignette.dom/api";
+var rootURL = "http://vignette.no-ip.org/api";
 
 
 $(document).ready(function () {
+
+    /* Populate the default list of symbols */
+    $.ajax({
+        type: 'GET',
+        url: rootURL + '/banned/',
+        dataType: 'json', 
+        success: function(data) {
+            length = data.length;
+
+            for (var i = 0; i < length; i++)
+            {
+                if (data[i] == "UBSI")
+                {
+                    list += '<option selected="selected">';
+                }
+                else
+                {
+                    list += "<option>";
+                }
+                list += data[i]+"</option>";
+            }
+
+            $('#banned_symbol').html(list);
+        }
+    });
+
+
     /* Set the default symbol to ban on load */
     var symbol = $('#banned_symbol').val();
     var ban_period = {};
