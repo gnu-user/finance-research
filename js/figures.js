@@ -27,7 +27,7 @@ $(document).ready(function () {
     /* Populate the default list of symbols */
     $.ajax({
         type: 'GET',
-        url: rootURL + '/banned/',
+        url: rootURL + '/banned',
         dataType: 'json', 
         success: function(data) {
             length = data.length;
