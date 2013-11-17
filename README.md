@@ -16,6 +16,14 @@ analyze the data can be found in [analysis](analysis/). For more information rel
 itself and the outcome, please see the [poster](poster/STAR_award_poster_2013.pdf).
 
 
+Vignette
+---------------------------
+
+For more information about this project, please see the following [Vignette](http://gnu-user.github.io/finance-research/)
+which contains a summary of the research done and an interactive plot demonstrating the results of the
+matching process used to match banned symbols to a control.
+
+
 Copyright (Really Copyleft)
 ---------------------------
 
