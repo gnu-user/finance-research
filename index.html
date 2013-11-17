@@ -64,6 +64,27 @@
 
     <!-- MATCHING -->
     <h1 id="matching" class="section">3 Matching Process</h1>
+    <p>
+      The following section highlights the result of the matching process using a stochastic method
+      rather than greedy selection to find the best possible match given the constraints of time,
+      accuracy, and the number of parameters used as a basis for matching.
+    </p>
+    <p>
+      Symbols that were banned during the period that the short-sale ban was in effect were matched
+      to the closest possible symbol that was not banned during the period based on the following 
+      criteria.
+    </p>
+    <ul>
+      <li>Price</li>
+      <li>Volume</li>
+      <li>Market Capitalization</li>
+    </ul>
+    <p>
+      In calculating the best match the percentage difference is taken between the banned symbol and
+      all potential candidate matches from symbols that were never banned. The symbol with the lowest
+      cumulative percentage difference for all matching criteria is chosen as the most suitable match.
+      Once a symbol has been matched to a banned symbol it cannot be matched to any other symbol.
+    </p>
     <h2>Banned Symbol Matching Results</h2>
     <div class="well well-large">
       <div class="row">
