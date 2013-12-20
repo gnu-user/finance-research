@@ -13,7 +13,8 @@ This project contains scripts used to process and massage the time series data i
 found in [scripts](scripts/), for an overview of the code and instructions please see the 
 [README file](scripts/README.md). As well, for the analysis aspect of the research, the R code which was used to 
 analyze the data can be found in [analysis](analysis/). For more information related specifically to the research 
-itself and the outcome, please see the [poster](poster/STAR_award_poster_2013.pdf).
+itself and the outcome, please see the [poster](poster/STAR_award_poster_2013.pdf) and 
+[vignette](http://gnu-user.github.io/finance-research/).
 
 
 Vignette
